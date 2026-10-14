@@ -1,0 +1,13 @@
+import { chromium as pw } from '@playwright/test';
+import chromium from '@sparticuz/chromium';
+const browser=await pw.launch({headless:true,executablePath:await chromium.executablePath(),args:chromium.args});
+const page=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
+page.on('pageerror',e=>console.log('PAGEERROR',e.message));page.on('console',m=>{if(m.type()==='error')console.log('CONSOLE',m.text());});
+await page.goto('http://127.0.0.1:5173');await page.locator('#loading').waitFor({state:'hidden'});await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(1200);
+await page.screenshot({path:'/home/user/house-title.png'});
+await page.locator('#new-game').click();
+for(let i=0;i<8;i++)await page.keyboard.press('e');
+await page.waitForTimeout(700);
+console.log(await page.evaluate(()=>window.__house.snapshot()));
+await page.screenshot({path:'/home/user/house-game.png'});
+await browser.close();

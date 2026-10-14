@@ -1,0 +1,149 @@
+[
+  {
+    "file": "assets/indoor.png",
+    "repository": "mapeditor/tiled-resources",
+    "path": "RPG/roguelikeIndoor_transparent.png",
+    "commit": "b03f300dabbfaca46f2222b6a0ae964fdf666e49",
+    "sha256": "ab482e791c26bf7e483fbd9e2ead88d487502da362cc650b62ade3734c002b6c"
+  },
+  {
+    "file": "assets/dungeon.png",
+    "repository": "mapeditor/tiled-resources",
+    "path": "RPG/roguelikeDungeon_transparent.png",
+    "commit": "b03f300dabbfaca46f2222b6a0ae964fdf666e49",
+    "sha256": "3abd8d294c523fe78078e2123146a2b9d2c0f2dd3cfbbd60dec8f508c3fe8c2c"
+  },
+  {
+    "file": "assets/sheet.png",
+    "repository": "mapeditor/tiled-resources",
+    "path": "RPG/roguelikeSheet_transparent.png",
+    "commit": "b03f300dabbfaca46f2222b6a0ae964fdf666e49",
+    "sha256": "808c8d734480bc949b284f3bcc252e87e1ee53b24178791a6838cce6a319c439"
+  },
+  {
+    "file": "licenses/kenney-graphics.txt",
+    "repository": "mapeditor/tiled-resources",
+    "path": "RPG/License.txt",
+    "commit": "b03f300dabbfaca46f2222b6a0ae964fdf666e49",
+    "sha256": "e3158109ad8580ef266db5b00f97bbed853870a99c0721200ef23880bdfd416e"
+  },
+  {
+    "file": "assets/audio/footstep_0.ogg",
+    "repository": "Boyquotes/kenney-rpg-audio-for-godot",
+    "path": "addons/kenney rpg audio/footstep_0.ogg",
+    "commit": "22eb79bb843bbcadcaa6ed119353a33265ffad11",
+    "sha256": "6fe61ef1fc3bcf0e253bf2eb64759db6cb69e2fe452f4d88cc597ecf78a3d601"
+  },
+  {
+    "file": "assets/audio/footstep_1.ogg",
+    "repository": "Boyquotes/kenney-rpg-audio-for-godot",
+    "path": "addons/kenney rpg audio/footstep_1.ogg",
+    "commit": "22eb79bb843bbcadcaa6ed119353a33265ffad11",
+    "sha256": "313472dba31fd0c855376069fa368bb5a198c27251cc8398ef464578b7047a4c"
+  },
+  {
+    "file": "assets/audio/footstep_2.ogg",
+    "repository": "Boyquotes/kenney-rpg-audio-for-godot",
+    "path": "addons/kenney rpg audio/footstep_2.ogg",
+    "commit": "22eb79bb843bbcadcaa6ed119353a33265ffad11",
+    "sha256": "2d9575b7dead6e1217ca113991fc5229e9b6d998ea0726ebbb277e7398ab888f"
+  },
+  {
+    "file": "assets/audio/creak_1.ogg",
+    "repository": "Boyquotes/kenney-rpg-audio-for-godot",
+    "path": "addons/kenney rpg audio/creak_1.ogg",
+    "commit": "22eb79bb843bbcadcaa6ed119353a33265ffad11",
+    "sha256": "8a346186fd297254248cab8e8117060a52a5cf2a84f603153a762108550ea95e"
+  },
+  {
+    "file": "assets/audio/creak_2.ogg",
+    "repository": "Boyquotes/kenney-rpg-audio-for-godot",
+    "path": "addons/kenney rpg audio/creak_2.ogg",
+    "commit": "22eb79bb843bbcadcaa6ed119353a33265ffad11",
+    "sha256": "8a990afdc03aebb91d528f5385e2f95582dbfa8e2c12c71098ab01be9142294a"
+  },
+  {
+    "file": "assets/audio/creak_3.ogg",
+    "repository": "Boyquotes/kenney-rpg-audio-for-godot",
+    "path": "addons/kenney rpg audio/creak_3.ogg",
+    "commit": "22eb79bb843bbcadcaa6ed119353a33265ffad11",
+    "sha256": "f9638787f95004b9d2d06f8eff8e99d4e594c21b51947daf562856fbcec905d1"
+  },
+  {
+    "file": "assets/audio/door_open_1.ogg",
+    "repository": "Boyquotes/kenney-rpg-audio-for-godot",
+    "path": "addons/kenney rpg audio/door_open_1.ogg",
+    "commit": "22eb79bb843bbcadcaa6ed119353a33265ffad11",
+    "sha256": "4ab93bab96522d8eb109ff96dc57cb6765deb02448fe14c10472084be5bb2a0b"
+  },
+  {
+    "file": "assets/audio/door_close_1.ogg",
+    "repository": "Boyquotes/kenney-rpg-audio-for-godot",
+    "path": "addons/kenney rpg audio/door_close_1.ogg",
+    "commit": "22eb79bb843bbcadcaa6ed119353a33265ffad11",
+    "sha256": "834d29c60a8a8bfb50b158cdb6b7dfa8f02812a408a1ee9703d038dfab0b1aeb"
+  },
+  {
+    "file": "assets/audio/book_open.ogg",
+    "repository": "Boyquotes/kenney-rpg-audio-for-godot",
+    "path": "addons/kenney rpg audio/book_open.ogg",
+    "commit": "22eb79bb843bbcadcaa6ed119353a33265ffad11",
+    "sha256": "953390534377222bee89ac8cd9e60a58fdc037c71a4d7c18c43cd647c7f34ba8"
+  },
+  {
+    "file": "assets/audio/book_flip_1.ogg",
+    "repository": "Boyquotes/kenney-rpg-audio-for-godot",
+    "path": "addons/kenney rpg audio/book_flip_1.ogg",
+    "commit": "22eb79bb843bbcadcaa6ed119353a33265ffad11",
+    "sha256": "fa81ac2fedc8c641661b87e349630a36c9800e795e0c800e029214efdbe26a7d"
+  },
+  {
+    "file": "assets/audio/metal_latch.ogg",
+    "repository": "Boyquotes/kenney-rpg-audio-for-godot",
+    "path": "addons/kenney rpg audio/metal_latch.ogg",
+    "commit": "22eb79bb843bbcadcaa6ed119353a33265ffad11",
+    "sha256": "ba9ba60b172b3ebc131a940f25793cd2e207aca7af73dc80d637277f060f1708"
+  },
+  {
+    "file": "assets/audio/metal_click.ogg",
+    "repository": "Boyquotes/kenney-rpg-audio-for-godot",
+    "path": "addons/kenney rpg audio/metal_click.ogg",
+    "commit": "22eb79bb843bbcadcaa6ed119353a33265ffad11",
+    "sha256": "9851a69d0c613e13bceef08060ecc4148f098ef487927cbebe270d642398a3b3"
+  },
+  {
+    "file": "assets/audio/cloth_1.ogg",
+    "repository": "Boyquotes/kenney-rpg-audio-for-godot",
+    "path": "addons/kenney rpg audio/cloth_1.ogg",
+    "commit": "22eb79bb843bbcadcaa6ed119353a33265ffad11",
+    "sha256": "ddb93a3671233f95da0e0b10367f082f7eb42fa6caaddcf776410aa8833c747d"
+  },
+  {
+    "file": "licenses/kenney-audio.txt",
+    "repository": "Boyquotes/kenney-rpg-audio-for-godot",
+    "path": "LICENSE",
+    "commit": "22eb79bb843bbcadcaa6ed119353a33265ffad11",
+    "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+  },
+  {
+    "file": "assets/interiors.png",
+    "repository": "Qam1ng/weak-robot-restaurant",
+    "path": "data/art/Modern_Interiors_Free_v2.2/Modern tiles_Free/Interiors_free/32x32/Interiors_free_32x32.png",
+    "commit": "d9a9445ad1c19a8391b652a2c064d7c08d66bf64",
+    "sha256": "4799775495ef030683ec49266e36ffbe570471fd18aa5698a5a1fd19908cb976"
+  },
+  {
+    "file": "assets/room-builder.png",
+    "repository": "Qam1ng/weak-robot-restaurant",
+    "path": "data/art/Modern_Interiors_Free_v2.2/Modern tiles_Free/Interiors_free/32x32/Room_Builder_free_32x32.png",
+    "commit": "d9a9445ad1c19a8391b652a2c064d7c08d66bf64",
+    "sha256": "420f22202a4576a38324912dfeb4da6537ca6cad8f007c8489da5fc81122c72d"
+  },
+  {
+    "file": "licenses/limezu-free.txt",
+    "repository": "Qam1ng/weak-robot-restaurant",
+    "path": "data/art/Modern_Interiors_Free_v2.2/Modern tiles_Free/LICENSE.txt",
+    "commit": "d9a9445ad1c19a8391b652a2c064d7c08d66bf64",
+    "sha256": "990df54574b2655f812d3654cc74b7a67c8b4cf66ef5c8cdf28aa8b350f53c0c"
+  }
+]
