@@ -1,15 +1,21 @@
 import {ROOMS,SPRITES,getHotspots} from './world.js';
 const clamp=(n,a,b)=>Math.min(b,Math.max(a,n));
 const rand=n=>{const a=Math.sin(n*127.1+311.7)*43758.5453;return a-Math.floor(a)};
+// Sheet rows: 0 front (facing the player), 1 left, 2 right, 3 back. Unit vectors of where she faces.
+const FACING=[[0,1],[-1,0],[1,0],[0,-1]];
+// Where the torch hand sits in each drawing, in world pixels from the feet anchor.
+// The side views are the supplied girl_left/girl_right icons: the near hand hangs
+// at the hip on the side she faces. Seen from behind the torch is in front of her.
+const TORCH_HAND=[[14,-16],[-15,-17],[15,-17],[0,-30]];
 export class Renderer{
  constructor(canvas){
-  this.canvas=canvas;this.ctx=canvas.getContext('2d',{alpha:false});this.images={};this.cache={};this.cam={x:512,y:320};this.time=0;this.resize();
+  this.canvas=canvas;this.ctx=canvas.getContext('2d',{alpha:false});this.images={};this.cache={};this.cam={x:512,y:320};this.time=0;this.beam={x:0,y:1};this.resize();
   this.lightCanvas=document.createElement('canvas');this.lightCanvas.width=1024;this.lightCanvas.height=640;
   addEventListener('resize',()=>this.resize());
  }
  async load(){
   await Promise.all(['interiors','room-builder','girl-walk','girl','indoor','dungeon','sheet'].map(name=>new Promise((resolve,reject)=>{
-   const im=new Image();im.onload=()=>{this.images[name]=im;resolve()};im.onerror=()=>reject(new Error(`素材を読み込めません: ${name}`));im.src=name==='girl-walk'?'/assets/character/girl-walk.svg?v=5':name==='girl'?'/assets/character/girl-front.png?v=5':`/assets/${name}.png`;
+   const im=new Image();im.onload=()=>{this.images[name]=im;resolve()};im.onerror=()=>reject(new Error(`素材を読み込めません: ${name}`));im.src=name==='girl-walk'?'/assets/character/girl-walk.svg?v=6':name==='girl'?'/assets/character/girl-front.png?v=6':`/assets/${name}.png`;
   })));
   // Color-grade once at load time, never in every animation frame.
   for(const name of ['interiors','room-builder','girl-walk']){
@@ -148,7 +154,16 @@ export class Renderer{
    g.addColorStop(0,`rgba(${col},.92)`);g.addColorStop(.35,`rgba(${col},.45)`);g.addColorStop(1,`rgba(${col},0)`);lc.fillStyle=g;lc.fillRect(light.x-radius,light.y-radius,radius*2,radius*2);
   }
   if(menu||state.light){
-   const g=lc.createRadialGradient(px,py-25,2,px,py-25,menu?145:185);g.addColorStop(0,'#f6ebc1');g.addColorStop(.15,'#e3dbb3dc');g.addColorStop(.65,'#b9b69844');g.addColorStop(1,'#b9b69800');lc.fillStyle=g;lc.fillRect(px-200,py-225,400,400);
+   // The torch is hand-held: its pool leads the way she faces and swings round
+   // smoothly when she turns, instead of a halo pinned to her feet.
+   const dir=menu?0:state.dir,[fx,fy]=FACING[dir],k=view.settings.reducedMotion?1:Math.min(1,dt*9);
+   this.beam.x+=(fx-this.beam.x)*k;this.beam.y+=(fy-this.beam.y)*k;
+   const bx=this.beam.x,by=this.beam.y,ax=Math.abs(bx),ay=Math.abs(by),r=menu?145:185;
+   const [hx,hy]=TORCH_HAND[dir],cx=px+hx*.6+bx*(menu?18:46),cy=py-25+hy*.4+by*(menu?8:24);
+   lc.save();lc.translate(cx,cy);lc.scale(1+ax*.32-ay*.08,1-ax*.16+ay*.14);
+   const g=lc.createRadialGradient(0,0,2,0,0,r);g.addColorStop(0,'#f6ebc1');g.addColorStop(.15,'#e3dbb3dc');g.addColorStop(.65,'#b9b69844');g.addColorStop(1,'#b9b69800');lc.fillStyle=g;lc.fillRect(-r-20,-r-20,r*2+40,r*2+40);lc.restore();
+   // Spill around the holder, so she never stands in the dark behind her own beam.
+   const s=lc.createRadialGradient(px,py-24,2,px,py-24,menu?70:92);s.addColorStop(0,'#e3dbb3b4');s.addColorStop(.5,'#c9c39d55');s.addColorStop(1,'#b9b69800');lc.fillStyle=s;lc.fillRect(px-100,py-124,200,200);
   }
   c.save();c.globalCompositeOperation='multiply';c.drawImage(this.lightCanvas,0,0);c.restore();
   // Warm bulbs and bloom sit above the light map, with restrained intensity.
@@ -189,8 +204,16 @@ export class Renderer{
  drawPlayer(c,x,y,dir,moving,t,light){
   c.fillStyle='#03090bad';c.beginPath();c.ellipse(x,y-2,18,6,0,0,Math.PI*2);c.fill();
   const frame=moving?Math.floor(t*8)%4:0,bob=moving?0:Math.sin(t*1.65)*.7;
+  if(light&&dir===3){
+   // Facing away: the torch is in front of her body, so only its spill rims her hair and shoulders.
+   c.save();c.globalCompositeOperation='screen';const g=c.createRadialGradient(x,y-30,0,x,y-30,26);g.addColorStop(0,'#ffdc9752');g.addColorStop(1,'#edb86b00');c.fillStyle=g;c.fillRect(x-26,y-56,52,52);c.restore();
+  }
   c.save();this.tile(c,'girl-walk',frame*60,dir*60,60,60,x-25,y-48+bob,50,50);c.restore();
-  if(light){c.save();c.globalCompositeOperation='screen';const g=c.createRadialGradient(x+17,y-16,0,x+17,y-16,17);g.addColorStop(0,'#ffdc9788');g.addColorStop(1,'#edb86b00');c.fillStyle=g;c.fillRect(x,y-33,34,34);c.fillStyle='#f5dfad';c.fillRect(x+15,y-17,3,3);c.restore();}
+  if(light&&dir!==3){
+   // The torch glows in the hand on the side she faces (left/right/front), never behind her back.
+   const [hx,hy]=TORCH_HAND[dir],gx=x+hx,gy=y+hy+bob;
+   c.save();c.globalCompositeOperation='screen';const g=c.createRadialGradient(gx,gy,0,gx,gy,17);g.addColorStop(0,'#ffdc9788');g.addColorStop(1,'#edb86b00');c.fillStyle=g;c.fillRect(gx-17,gy-17,34,34);c.fillStyle='#f5dfad';c.fillRect(Math.round(gx)-1,Math.round(gy)-1,3,3);c.restore();
+  }
  }
  drawGhost(c,a,t){
   c.save();c.globalAlpha=a.opacity??(.35+(a.danger??0)*.4);

@@ -1,14 +1,23 @@
-"""Build pixel-grid SVG masters and a four-direction sprite sheet from girl_idle.png.
+"""Build pixel-grid SVG masters and a four-direction sprite sheet.
 
-The front preserves original pixels (except its white matte/ground oval).
-The profile uses original hair and garment pixels inside a newly drawn 90-degree
-silhouette; skin/eye/outline colors are sampled directly from the original.
-No generated reference image is used. The source icon remains unmodified.
+Sources (all 60x60, left untouched in the repository root):
+- girl_idle.png  -> front view (original pixels; only the white matte and the
+                    baked floor oval are removed) and the derived back view.
+- girl_left.png  -> left view.   Supplied artwork, cleaned on its own grid.
+- girl_right.png -> right view.  Supplied artwork, cleaned on its own grid.
+
+The side views are not redrawn: every remaining pixel is either an original
+pixel or an original pixel with the white background un-blended from it.
+Cleaning removes (1) the floor shadow oval, (2) the pale anti-aliased fringe
+left by keying a white background, (3) the white windows inside hair curls and
+(4) one-pixel wisps/jaggies, then paints a handful of explicitly listed pixels
+so the back-of-head curls become solid instead of broken rings.
 """
 from PIL import Image, ImageDraw, ImageFilter
 from pathlib import Path
-from collections import Counter
+from collections import Counter, deque
 import json
+import numpy as np
 
 ROOT=Path(__file__).resolve().parents[1]
 DEST=ROOT/'public/assets/character'
@@ -104,146 +113,180 @@ def fill_hair(im,points,zone='crown'):
     im.putpixel((x,y),rgba(original_hair(x,y,zone) if inside.getpixel((x,y)) else colors['outline']))
  return mask
 
-# The profile uses the SAME visible locks as the front, with source y preserved.
-# Thus the forehead, cheek-level bend and hem-level tips stay at the same height.
-PROFILE_HAIR = {
- 'crown': [(25,1),(34,1),(34,2),(40,2),(40,4),(44,4),(44,6),
-           (47,6),(47,10),(49,10),(49,17),(47,20),(43,22),
-           (37,25),(27,26),(20,25),(16,23),(13,20),(13,13),
-           (16,8),(20,4),(25,4)],
- 'rear': [(21,12),(29,12),(32,18),(32,25),(30,31),(30,36),
-          (31,39),(29,42),(26,43),(23,42),(20,43),(17,41),
-          (15,38),(14,33),(14,27),(13,22),(15,16)],
- 'fringe': [(29,7),(40,7),(45,11),(47,14),(47,18),(45,20),
-            (42,20),(40,19),(39,21),(37,22),(36,24),(33,23),(31,19)],
- 'near': [(29,14),(33,14),(35,18),(35,24),(34,28),(35,32),
-          (37,35),(37,38),(35,41),(33,43),(30,42),(29,40),
-          (30,37),(30,34),(28,30),(27,25),(27,20)]
-}
+# ---------------------------------------------------------------------------
+# Side views: de-matting of the supplied girl_left.png / girl_right.png.
+# ---------------------------------------------------------------------------
+WHITE=np.array([255.,255.,255.])
+# The floor shadow baked into both side images (mean of its interior pixels).
+FLOOR_OVAL=np.array([176.,176.,176.])
+N4=[(0,-1),(-1,0),(1,0),(0,1)]
+def lum(rgb):return (rgb[...,0]*299+rgb[...,1]*587+rgb[...,2]*114)//1000
+def sat(rgb):return rgb.max(-1)-rgb.min(-1)
+def inb(x,y):return 0<=x<60 and 0<=y<60
+def box(x0,y0,x1,y1):return [(x,y) for y in range(y0,y1+1) for x in range(x0,x1+1)]
 
-def profile_hair(im,part):
- """One hairstyle at three angles, not a stretched strip of cropped hair.
-
-Lengths and the cheek-level curve come from the front/back landmarks. The crown
-retains source pixels. Hanging hair uses broad lengthwise planes in colors taken
-from the same source; no repeated horizontal rows or additional strand lines.
- """
- points=PROFILE_HAIR[part]
- mask=Image.new('L',(60,60));ImageDraw.Draw(mask).polygon(points,fill=255)
- inner=mask.filter(ImageFilter.MinFilter(3))
- # All of these exact colors occur in the cleaned source hair (not a new palette).
- shade=(82,54,61);base=(104,76,83);mid=(111,81,85)
- light=(120,90,94);edge=(88,60,65)
- layer=Image.new('RGBA',(60,60),rgba(base))
- if part=='rear':
-  poly(layer,[(13,16),(19,13),(18,22),(16,30),(17,37),(20,42),
-              (17,44),(13,40)],shade)
-  poly(layer,[(20,13),(25,13),(26,20),(24,28),(24,34),(27,39),
-              (25,42),(21,41),(20,35),(21,28),(19,21)],mid)
-  poly(layer,[(20,16),(22,15),(23,21),(22,29),(23,35),(24,38),
-              (22,40),(20,36),(20,30),(21,23)],light)
-  poly(layer,[(28,16),(32,18),(31,28),(29,33),(30,38),(28,42),
-              (26,40),(27,35),(26,29)],shade)
- elif part=='near':
-  poly(layer,[(27,14),(30,14),(29,23),(30,30),(32,34),(31,39),
-              (32,43),(29,43),(28,38),(29,34),(26,28)],shade)
-  poly(layer,[(31,16),(33,18),(32,24),(32,30),(35,35),(35,38),
-              (33,41),(31,40),(33,37),(32,34),(30,28),(30,22)],light)
-  poly(layer,[(35,18),(36,23),(35,29),(37,34),(38,38),(35,42),
-              (33,43),(34,40),(35,37),(34,32)],edge)
- else:
-  # Preserve the source crown/fringe shading at the same y, without stretching
-  # source eye/matte pixels into the lower head. Lower cap merges into the locks.
-  for y in range(2,26):
-   for x in range(13,50):
-    if y<18:
-     sx=round(8+(x-13)*1.12) if part=='crown' else round(25+(x-29)*1.05)
-     sx=max(5,min(50,sx));r,g,b,a=front.getpixel((sx,y))
-     rgb=(r,g,b) if a and 0<r-g<43 and min(r,g,b)<121 else base
-     # Ease the original scalp texture into the hanging mass, avoiding a cap seam.
-     if y>12:
-      k=(y-12)/9
-      rgb=tuple(round(v*(1-k)+q*k) for v,q in zip(rgb,mid if 18<x<27 else base))
-    else:
-     rgb=mid if 18<x<27 else base
-     if x<17 or x>43:rgb=edge
-    layer.putpixel((x,y),rgba(rgb))
- # Subtle source texture stays within each longitudinal shading plane. It cannot
- # create stripes: only local, high-frequency source variation is transferred.
- if part in ('rear','near'):
-  source_x=9 if part=='rear' else 46
-  for y in range(14,44):
-   for x in range(13,38):
-    c=front.getpixel((source_x+(x%3),y));smooth=hair_source.getpixel((source_x+(x%3),y));d=max(-4,min(4,(c[0]-smooth[0])//3)) if c[3] else 0
-    r,g,b,a=layer.getpixel((x,y));layer.putpixel((x,y),(r+d,g+d,b+d,a))
+def flood_from_border(passable):
+ seen=np.zeros_like(passable,bool);q=deque()
  for y in range(60):
   for x in range(60):
-   if not mask.getpixel((x,y)):continue
-   rgb=layer.getpixel((x,y))[:3]
-   # Blend only the outside contour. The scalp/lock overlap has no dark seam.
-   if not inner.getpixel((x,y)) and part in ('rear','near'):
-    rgb=tuple(round(v*.75+e*.25) for v,e in zip(rgb,edge))
-   im.putpixel((x,y),rgba(rgb))
- return mask
+   if (y in (0,59) or x in (0,59)) and passable[y,x]:seen[y,x]=True;q.append((x,y))
+ while q:
+  x,y=q.popleft()
+  for dx,dy in N4:
+   nx,ny=x+dx,y+dy
+   if inb(nx,ny) and passable[ny,nx] and not seen[ny,nx]:seen[ny,nx]=True;q.append((nx,ny))
+ return seen
 
-def make_profile():
- im=Image.new('RGBA',(60,60))
- # Keep the original doll-like proportions: broad rounded head, very short
- # neck, tiny torso and small boots. All visible details point to the right.
- profile_hair(im,'rear')
- # Far stocking and compact forward-pointing shoe (partly behind near leg).
- poly(im,[(32,44),(37,44),(37,52),(39,53),(40,55),(32,55),(31,53)],sample(25,54))
- rect(im,(33,45,36,49),sample(25,47));rect(im,(33,49,36,50),sample(25,50))
- # Preserve the original dress pixels and soft pink-gray shading.
- dressmask=Image.new('L',(60,60))
- ImageDraw.Draw(dressmask).polygon([(33,31),(38,31),(40,33),(41,38),
-  (43,42),(45,44),(43,46),(29,46),(27,44),(29,39),(30,34)],fill=255)
- edge=dressmask.filter(ImageFilter.MinFilter(3))
- for y in range(31,47):
-  for x in range(27,46):
-   if dressmask.getpixel((x,y)):
-    sx=min(42,19+round((x-27)*1.1));rgba_source=front.getpixel((sx,min(44,y)))
-    if not rgba_source[3]:rgba_source=rgba(colors['clothShade'])
-    im.putpixel((x,y),rgba_source if edge.getpixel((x,y)) else rgba(sample(22,44)))
- # Narrow collar/tie seen edge-on, not a broad frontal chest.
- poly(im,[(36,30),(39,30),(41,33),(39,34),(36,32)],colors['clothLight'])
- rect(im,(40,33,40,36),sample(30,33))
- # Near leg. A one-pixel toe extension keeps the small original boot shape.
- poly(im,[(35,46),(40,46),(40,52),(42,53),(43,54),(43,56),(35,56),(34,53)],sample(25,54))
- rect(im,(36,46,39,50),sample(34,48));rect(im,(37,49,39,51),sample(36,49))
- rect(im,(36,53,39,54),sample(26,53));rect(im,(40,54,41,54),sample(26,53))
- # Small relaxed sleeve and hand; less angular than the previous elbow block.
- poly(im,[(32,33),(35,33),(37,35),(37,38),(35,40),(31,39),(30,37)],sample(22,38))
- poly(im,[(32,34),(35,34),(36,36),(35,38),(31,38),(31,36)],colors['clothLight'])
- rect(im,(32,39,35,40),sample(23,38));rect(im,(33,41,35,42),sample(28,26))
- # Broad rounded crown, with source hair pixels rather than synthetic detail.
- profile_hair(im,'crown')
- # A round cheek, shallow one-pixel nose and NO hard mouth/chin line.
- # The old long stepped nose + dark jaw accidentally read as an adult grin.
- cheek=sample(30,25);edge_skin=sample(26,27);shadow_skin=sample(23,26)
- poly(im,[(39,18),(44,18),(46,20),(46,23),(47,24),(47,26),
-          (46,27),(46,28),(44,30),(39,30),(36,29),(34,27),(34,23)],edge_skin)
- poly(im,[(39,19),(44,19),(45,21),(45,24),(46,24),(46,27),
-          (44,29),(39,29),(36,28),(35,26),(35,23)],cheek)
- rect(im,(39,26,44,28),sample(31,26))
- rect(im,(45,25,46,26),sample(30,25))
- # The thick fringe and long cheek-side lock correspond to the front/back.
- # The near lock reaches the hem at y=43, not the old shoulder-length y=33.
- profile_hair(im,'fringe')
- profile_hair(im,'near')
- # Copy ONE original eye at its original pixel size. Do not invent a large,
- # sharp eyebrow, white anime highlight, smile, or a second profile eye.
- for yy in range(6):
-  for xx in range(4):
-   c=src.getpixel((19+xx,19+yy))
-   if max(c[:3])<145:im.putpixel((41+xx,20+yy),(c[0],c[1],c[2],255))
- # Source lower-eye shade and subtle cheek tint; there is deliberately no mouth.
- rect(im,(42,25,43,25),sample(23,24))
- rect(im,(39,26,40,26),sample(24,25))
- return im
+def components(mask):
+ seen=np.zeros_like(mask,bool);out=[]
+ for y in range(60):
+  for x in range(60):
+   if mask[y,x] and not seen[y,x]:
+    comp=[(x,y)];seen[y,x]=True;q=deque(comp)
+    while q:
+     cx,cy=q.popleft()
+     for dx,dy in N4:
+      nx,ny=cx+dx,cy+dy
+      if inb(nx,ny) and mask[ny,nx] and not seen[ny,nx]:seen[ny,nx]=True;q.append((nx,ny));comp.append((nx,ny))
+    out.append(comp)
+ return out
 
-right=make_profile()
-left=right.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+def local_mean(arr,mask,x,y,r=2):
+ ys=slice(max(0,y-r),y+r+1);xs=slice(max(0,x-r),x+r+1);m=mask[ys,xs]
+ return arr[ys,xs][m].mean(0) if m.any() else None
+
+class SideView:
+ """Removes everything that is background from a keyed side-view icon.
+
+ Terminology: a pixel is *neutral-light* when it is nearly grey and bright;
+ those are only ever white background, the grey floor oval, or blends of the
+ two with the figure. A pixel is *confident* when it is clearly coloured or
+ clearly dark, i.e. certainly part of the figure. Decisions near the outline
+ use the estimated coverage of a pixel: P = a*C + (1-a)*W, where C is the
+ local figure colour and W the background behind that pixel.
+ """
+ def __init__(self,path,log=None):
+  self.log=log or (lambda *a:None);self.name=Path(path).name
+  data=np.array(Image.open(path).convert('RGBA')).astype(float)
+  self.rgb=data[...,:3];self.alpha=data[...,3]>0;self.out=self.rgb.copy()
+  L=lum(self.rgb);S=sat(self.rgb)
+  self.neutral_light=self.alpha&(((S<16)&(L>=128))|((S<20)&(L>=176)))
+  self.confident=self.alpha&((S>=16)|(L<64))&~self.neutral_light
+  self.matte=np.zeros_like(self.alpha)
+ def background(self,x,y):return FLOOR_OVAL if y>=50 else WHITE
+ def coverage(self,x,y,C):
+  W=self.background(x,y);P=self.out[y,x];d=W-C;d[np.abs(d)<1]=1
+  return float(((W-P)/d).clip(0,1).mean())
+ def unblend(self,x,y,C,a):
+  W=self.background(x,y);est=(self.out[y,x]-(1-a)*W)/max(a,1e-6)
+  self.out[y,x]=(0.5*est+0.5*C).clip(0,255);self.confident[y,x]=True
+ def remove_background(self):
+  """Floor oval, outer fringe and curl windows that touch the outside."""
+  reached=flood_from_border((~self.alpha)|self.neutral_light)
+  self.matte=reached&self.alpha;self.alpha&=~self.matte
+  # Windows fully enclosed by hair are gaps between locks that collapsed at
+  # this resolution: paint them with the surrounding hair colour.
+  for comp in components(self.neutral_light&~reached&self.alpha):
+   for x,y in comp:
+    C=local_mean(self.out,self.confident,x,y,2)
+    if C is not None:self.out[y,x]=C;self.confident[y,x]=True
+   self.log(self.name,'curl window painted',comp)
+ def refine_outline(self,keep=0.5):
+  """Peel blended outline pixels from the outside in.
+
+  A pixel that is mostly background (coverage below 0.5) is removed; a pixel
+  that is mostly figure keeps its place and gets the background un-blended
+  from its colour, so no grey halo remains on a dark game background.
+  """
+  for _ in range(10):
+   edge=[(x,y) for y in range(60) for x in range(60) if self.alpha[y,x] and not self.confident[y,x]
+         and (x in (0,59) or y in (0,59) or any(not self.alpha[y+dy,x+dx] for dx,dy in N4 if inb(x+dx,y+dy)))]
+   removed=0
+   for x,y in edge:
+    C=local_mean(self.out,self.confident,x,y,2)
+    if C is None:C=local_mean(self.out,self.alpha,x,y,2)
+    a=self.coverage(x,y,C)
+    if a<keep:self.alpha[y,x]=False;self.matte[y,x]=True;removed+=1
+    else:self.unblend(x,y,C,a)
+   if not removed:break
+ def refine_interior(self,contrast=35):
+  """Light grey pixels left inside the figure next to former windows."""
+  L=lum(self.out);S=sat(self.out);fixed=[]
+  for y in range(60):
+   for x in range(60):
+    if not self.alpha[y,x] or self.confident[y,x] or S[y,x]>=16 or L[y,x]<80:continue
+    C=local_mean(self.out,self.confident&self.alpha,x,y,2)
+    if C is not None and L[y,x]-lum(C[None])[0]>contrast:
+     self.unblend(x,y,C,max(.35,self.coverage(x,y,C)));fixed.append((x,y))
+  if fixed:self.log(self.name,'interior grey un-blended',fixed)
+ def paint(self,points,sample_box=None):
+  """Paint points with the mean of nearby confident pixels (or of a box)."""
+  for x,y in points:
+   if sample_box:
+    x0,y0,x1,y1=sample_box;m=np.zeros((60,60),bool);m[y0:y1+1,x0:x1+1]=True;m&=self.confident&self.alpha
+    C=self.out[m].mean(0)
+   else:
+    C=local_mean(self.out,self.confident&self.alpha,x,y,2)
+    if C is None:C=local_mean(self.out,self.confident&self.alpha,x,y,3)
+   self.out[y,x]=C;self.alpha[y,x]=True;self.confident[y,x]=True
+ def erase(self,points):
+  for x,y in points:self.alpha[y,x]=False
+ def hem(self,limits,window):
+  """Give ragged hair tips one continuous bottom edge.
+
+  limits maps x -> lowest hair row kept in that column (-1 = none); inside
+  `window` rows, pixels above the edge are filled and pixels below erased.
+  """
+  for x,bottom in limits.items():
+   for y in range(window[0],window[1]+1):
+    if y<=bottom and not self.alpha[y,x]:self.paint([(x,y)])
+    elif y>bottom:self.alpha[y,x]=False
+ def despeckle(self,min_island=8):
+  for _ in range(3):
+   spurs=[(x,y) for y in range(60) for x in range(60) if self.alpha[y,x]
+          and sum(1 for dx,dy in N4 if inb(x+dx,y+dy) and self.alpha[y+dy,x+dx])<=1]
+   for x,y in spurs:self.alpha[y,x]=False
+   if spurs:self.log(self.name,'one-pixel wisps removed',spurs)
+   else:break
+  for comp in components(self.alpha):
+   if len(comp)<min_island:
+    for x,y in comp:self.alpha[y,x]=False
+    self.log(self.name,'island removed',comp)
+ def image(self):
+  res=np.zeros((60,60,4),np.uint8);res[...,:3]=self.out.round().clip(0,255);res[...,3]=np.where(self.alpha,255,0)
+  return Image.fromarray(res,'RGBA')
+
+def make_left(log=None):
+ v=SideView(ROOT/'girl_left.png',log);v.remove_background();v.refine_outline();v.refine_interior()
+ # Dress showing through a split in the front lock: a lone bright speck at game scale.
+ v.paint(box(9,41,11,42),sample_box=(6,43,11,45))
+ # Back of the head: detached ring of a curl, and the background windows of two curls.
+ v.erase(box(55,19,59,27));v.paint(box(53,21,54,25));v.paint(box(53,32,55,35))
+ # Lowest hair tips at the back were interleaved with background at 1px pitch.
+ v.hem({41:37,42:37,43:37,44:37,45:38,46:38,47:38,48:38,49:38,50:38,51:38,52:37,53:37,54:37,55:36,56:36,57:35,58:34,59:-1},(33,40))
+ v.despeckle()
+ return v.image()
+
+def make_right(log=None):
+ v=SideView(ROOT/'girl_right.png',log);v.remove_background();v.refine_outline();v.refine_interior()
+ # Back of the head (left side): detached ring of a curl and its window.
+ v.erase(box(0,19,3,27));v.paint(box(4,21,5,25))
+ v.hem({0:-1,1:35,2:35,3:35,4:36,5:36,6:36,7:37,8:37,9:37,10:36,11:36,12:36},(33,40))
+ # Front lock on the right: keep the continuous strand, drop the wisps under it.
+ v.erase(box(50,36,53,40));v.erase([(56,36)])
+ v.despeckle()
+ return v.image()
+
+# Both supplied side images touch the top edge. Everything sits one row lower on
+# the sheet so the walking frames can lift the body by a pixel without clipping.
+SIDE_DROP=1
+def dropped(im,dy=SIDE_DROP):
+ out=Image.new('RGBA',(60,60));out.alpha_composite(im.crop((0,0,60,60-dy)),(0,dy));return out
+
+left_source=make_left(print)
+right_source=make_right(print)
+left=dropped(left_source)
+right=dropped(right_source)
 
 def make_back():
  im=front.copy()
@@ -264,7 +307,7 @@ def svg_for(im,name,display_scale=1):
  lines=['<?xml version="1.0" encoding="UTF-8"?>',
   f'<svg xmlns="http://www.w3.org/2000/svg" width="{im.width*display_scale}" height="{im.height*display_scale}" viewBox="0 0 {im.width} {im.height}" shape-rendering="crispEdges">',
   f'<title>{name}</title>',
-  '<desc>Derived from the supplied girl_idle.png. Original pixel samples with matte removed; side silhouette, profile face and pose reconstructed on a 60x60 grid. Unseen details are an adaptation, not assertions about the original design.</desc>']
+  '<desc>Front derived from the supplied girl_idle.png with its matte removed; back is an adaptation of it (unseen details are not assertions about the original design). Left/right are the supplied girl_left.png and girl_right.png cleaned on the original 60x60 grid: white matte, floor oval and broken curl pixels removed, edge colours un-blended from the background. Walk frames only reposition the legs.</desc>']
  for y in range(im.height):
   x=0
   while x<im.width:
@@ -274,16 +317,42 @@ def svg_for(im,name,display_scale=1):
    x=end
  lines.append('</svg>');return '\n'.join(lines)+'\n'
 
-def side_frame(base,frame):
- if frame==0:return base.copy()
- # Distinct legs swing in opposite directions with separated forward-pointing toes.
- stride=[0,3,0,-3][frame];bob=1 if frame in (1,3) else 0
- im=Image.new('RGBA',(60,60));im.alpha_composite(base.crop((0,0,60,46)),(0,bob))
- # Preserve hanging hair independently from the walking legs.
- im.alpha_composite(base.crop((0,46,29,52)),(0,46+bob))
- leg_far=base.crop((29,46,36,56));leg_near=base.crop((36,46,46,57))
- im.alpha_composite(leg_far,(29-stride,46+(1 if stride>0 else 0)))
- im.alpha_composite(leg_near,(36+stride,46-(1 if stride<0 else 0)))
+# Leg layout of the supplied side views, in source (un-dropped) coordinates.
+# `near` is the leg drawn in front (toe pointing the way she faces); the hem of
+# the dress ends on row 47 in both images, so the legs begin on row 48.
+# `travel` is how far (pixels) the near leg swings back and the far leg swings
+# forward between the supplied pose and the opposite contact pose; the far foot
+# of each drawing sits higher on screen, so the two amounts differ per view.
+SIDE_LEGS={
+ 'left':{'forward':-1,'near':lambda x,y:x<=30 or (50<=y<=52 and x<=31) or (y>=53 and x<=32),'travel':(8,14)},
+ 'right':{'forward':1,'near':lambda x,y:x>=32,'travel':(10,12)},
+}
+LEG_TOP=48
+def shifted(layer,dx,dy):
+ out=Image.new('RGBA',(60,60));out.paste(layer,(dx,dy),layer);return out
+def side_frame(source,side,frame):
+ """Contact / pass / contact / pass.
+
+ Frame 0 is the supplied pose (near foot forward). On frame 2 the near leg has
+ travelled back and the far leg forward; frames 1 and 3 are the passes between
+ them, with the swinging foot lifted and the body raised by one pixel. Feet
+ stay on the ground line, so the sprite's anchor never moves.
+ """
+ spec=SIDE_LEGS[side];fwd=spec['forward']
+ near=Image.new('RGBA',(60,60));far=Image.new('RGBA',(60,60))
+ for y in range(LEG_TOP,60):
+  for x in range(60):
+   p=source.getpixel((x,y))
+   if p[3]:(near if spec['near'](x,y) else far).putpixel((x,y),p)
+ body=source.crop((0,0,60,LEG_TOP))
+ phase=[0,.5,1,.5][frame];swing={1:'far',3:'near'}.get(frame);lift=1 if swing else 0
+ near_dx,far_dx=(round(spec['travel'][0]*phase),round(spec['travel'][1]*phase))
+ im=Image.new('RGBA',(60,60))
+ # The hem rows are repeated under the legs so the raised body leaves no gap.
+ im.alpha_composite(source.crop((0,LEG_TOP-2,60,LEG_TOP)),(0,LEG_TOP-2+SIDE_DROP))
+ im.alpha_composite(shifted(far,fwd*far_dx,SIDE_DROP-(1 if swing=='far' else 0)))
+ im.alpha_composite(shifted(near,-fwd*near_dx,SIDE_DROP-(1 if swing=='near' else 0)))
+ im.alpha_composite(body,(0,SIDE_DROP-lift))
  return im
 
 def front_frame(base,frame):
@@ -300,13 +369,11 @@ for row,(name,base) in enumerate([('front',front),('left',left),('right',right),
  (DEST/f'girl-{name}.svg').write_text(svg_for(base,f'主人公・{name}',8),encoding='utf8')
  base.save(DEST/f'girl-{name}.png')
  for frame in range(4):
-  if row in (1,2):
-   im=side_frame(right,frame)
-   if row==1:im=im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+  if name in ('left','right'):im=side_frame(left_source if name=='left' else right_source,name,frame)
   else:im=front_frame(base,frame)
   sheet.alpha_composite(im,(frame*60,row*60))
   (DEST/f'girl-{name}-walk-{frame}.svg').write_text(svg_for(im,f'主人公・{name} 歩行 {frame}'),encoding='utf8')
 (DEST/'girl-walk.svg').write_text(svg_for(sheet,'主人公・四方向の歩行シート'),encoding='utf8')
 sheet.save(ROOT/'public/assets/girl-walk.png');front.save(ROOT/'public/assets/girl.png')
 (DEST/'source-palette.json').write_text(json.dumps(colors,indent=2))
-print('Generated clean front + true profile SVGs, back SVG, and 16-frame PNG atlas.')
+print('Generated clean front, supplied-and-cleaned left/right, back SVGs and the 16-frame PNG atlas.')
