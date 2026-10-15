@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="480" height="480" viewBox="0 0 60 60" shape-rendering="crispEdges">
-<title>主人公・left</title>
+<title>主人公・left（立ち＝歩行コマ0）</title>
 <desc>Front derived from the supplied girl_idle.png with its matte removed; back is an adaptation of it (unseen details are not assertions about the original design). Left/right are the supplied girl_left.png and girl_right.png cleaned on the original 60x60 grid: white matte, floor oval and broken curl pixels removed, edge colours un-blended from the background. Walk frames only reposition the legs.</desc>
 <rect x="21" y="1" width="1" height="1" fill="#352c31"/>
 <rect x="22" y="1" width="1" height="1" fill="#292327"/>

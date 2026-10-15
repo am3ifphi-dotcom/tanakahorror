@@ -1,8 +1,9 @@
 """Build pixel-grid SVG masters and a four-direction sprite sheet.
 
-Sources (all 60x60, left untouched in the repository root):
-- girl_idle.png  -> front view (original pixels; only the white matte and the
-                    baked floor oval are removed) and the derived back view.
+Sources (all 60x60, kept untouched in source/):
+- girl_idle.png  -> front view (original pixels; only the white matte, the
+                    baked floor oval and the white background trapped between
+                    the legs are removed) and the derived back view.
 - girl_left.png  -> left view.   Supplied artwork, cleaned on its own grid.
 - girl_right.png -> right view.  Supplied artwork, cleaned on its own grid.
 
@@ -22,7 +23,7 @@ import numpy as np
 ROOT=Path(__file__).resolve().parents[1]
 DEST=ROOT/'public/assets/character'
 DEST.mkdir(parents=True,exist_ok=True)
-src=Image.open(ROOT/'girl_idle.png').convert('RGBA')
+src=Image.open(ROOT/'source'/'girl_idle.png').convert('RGBA')
 
 def rgba(c):return tuple(c)+(255,) if len(c)==3 else tuple(c)
 def sample(x,y):return src.getpixel((x,y))[:3]
@@ -42,6 +43,34 @@ colors['hairDark']=sample(14,19)
 def poly(im,points,color):ImageDraw.Draw(im).polygon(points,fill=rgba(color))
 def rect(im,box,color):ImageDraw.Draw(im).rectangle(box,fill=rgba(color))
 def line(im,points,color,width=1):ImageDraw.Draw(im).line(points,fill=rgba(color),width=width)
+
+LEG_ROW=47  # the dress hem ends on row 46, so the legs start here
+def clear_leg_gap(im,top=LEG_ROW):
+ """Open the slit between the legs.
+
+ Keying the white studio background only reaches the silhouette. The slit
+ between the legs is enclosed - hem above, a leg on either side, the shoes
+ touching below - so its pale pixels survived and the legs looked webbed
+ together by a white block. Flood the slit from the first leg row using the
+ same "pale and desaturated" test as the matte pass, so only background
+ pixels are dropped and the white socks beside it are untouched.
+ """
+ def pale(x,y):
+  r,g,b,a=im.getpixel((x,y));return a and min(r,g,b)>100 and max(r,g,b)-min(r,g,b)<32
+ def dark(x,y):
+  r,g,b,a=im.getpixel((x,y));return a and (r*299+g*587+b*114)//1000<80
+ # Seeds: pale pixels on the first leg row that have a leg outline on each side.
+ seeds=[(x,top) for x in range(60) if pale(x,top)
+        and any(dark(i,top) for i in range(x)) and any(dark(i,top) for i in range(x+1,60))]
+ gap=set(seeds);queue=deque(seeds)
+ while queue:
+  x,y=queue.popleft()
+  for q in [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]:
+   if 0<=q[0]<60 and top<=q[1]<60 and q not in gap and pale(*q):gap.add(q);queue.append(q)
+ width=max(x for x,_ in gap)-min(x for x,_ in gap)+1
+ assert 0<len(gap)<40 and width<=4,('leg-gap flood escaped into the legs',len(gap),width)
+ for point in gap:im.putpixel(point,(0,0,0,0))
+ return sorted(gap)
 
 def clean_source():
  im=src.copy()
@@ -82,6 +111,7 @@ def clean_source():
    hair=(y<19 or (x<16 or x>44) and y<43)
    if a and hair and inside.getpixel((x,y))==0 and max(r,g,b)-min(r,g,b)<40:
     im.putpixel((x,y),rgba(colors['hairShade']))
+ clear_leg_gap(im)
  # Strip isolated matte islands; protect all genuine connected body details.
  mask=im.getchannel('A')
  for y in range(1,57):
@@ -257,7 +287,7 @@ class SideView:
   return Image.fromarray(res,'RGBA')
 
 def make_left(log=None):
- v=SideView(ROOT/'girl_left.png',log);v.remove_background();v.refine_outline();v.refine_interior()
+ v=SideView(ROOT/'source'/'girl_left.png',log);v.remove_background();v.refine_outline();v.refine_interior()
  # Dress showing through a split in the front lock: a lone bright speck at game scale.
  v.paint(box(9,41,11,42),sample_box=(6,43,11,45))
  # Back of the head: detached ring of a curl, and the background windows of two curls.
@@ -268,7 +298,7 @@ def make_left(log=None):
  return v.image()
 
 def make_right(log=None):
- v=SideView(ROOT/'girl_right.png',log);v.remove_background();v.refine_outline();v.refine_interior()
+ v=SideView(ROOT/'source'/'girl_right.png',log);v.remove_background();v.refine_outline();v.refine_interior()
  # Back of the head (left side): detached ring of a curl and its window.
  v.erase(box(0,19,3,27));v.paint(box(4,21,5,25))
  v.hem({0:-1,1:35,2:35,3:35,4:36,5:36,6:36,7:37,8:37,9:37,10:36,11:36,12:36},(33,40))
@@ -355,25 +385,61 @@ def side_frame(source,side,frame):
  im.alpha_composite(body,(0,SIDE_DROP-lift))
  return im
 
+def mirrored_legs(base,top=LEG_ROW):
+ """The opposite contact pose: the leg band reflected around its own centre.
+
+ Seen from the front the two contacts of a walk (left foot forward, right foot
+ forward) are mirror images, so the second one needs no new drawing - and no
+ frame of the cycle repeats. Only the rows below the hem are reflected, so the
+ body, the hair and the hem stay exactly as drawn.
+ """
+ xs=[x for y in range(top,60) for x in range(60) if base.getpixel((x,y))[3]]
+ lo,hi=min(xs),max(xs)
+ out=base.copy()
+ for y in range(top,60):
+  row=[base.getpixel((x,y)) for x in range(60)]
+  for x in range(60):
+   sx=lo+hi-x
+   out.putpixel((x,y),row[sx] if 0<=sx<60 else (0,0,0,0))
+ return out
+
 def front_frame(base,frame):
- if frame==0:return base.copy()
- stride=[0,1,0,-1][frame];im=Image.new('RGBA',(60,60))
- im.alpha_composite(base.crop((0,0,60,45)),(0,abs(stride)))
- im.alpha_composite(base.crop((0,45,19,51)),(0,45))
- im.alpha_composite(base.crop((43,45,60,51)),(43,45))
- im.alpha_composite(base.crop((19,45,30,57)),(19,45+stride))
- im.alpha_composite(base.crop((30,45,43,57)),(30,45-stride))
+ """Contact / pass / opposite contact / pass, as in the side views.
+
+ Frame 0 is the drawing itself and frame 2 its mirrored legs, so the two
+ contacts alternate feet; frames 1 and 3 are the passes between them, with the
+ body dipping one pixel and one leg lifted. The standing leg never moves, so
+ the sprite keeps the same ground line in every frame.
+ """
+ contact=base if frame<2 else mirrored_legs(base)
+ if frame in (0,2):return contact.copy()
+ swing=(30,43) if frame==1 else (19,30);im=Image.new('RGBA',(60,60))
+ im.alpha_composite(contact.crop((0,0,60,45)),(0,1))
+ im.alpha_composite(contact.crop((0,45,19,51)),(0,45))
+ im.alpha_composite(contact.crop((43,45,60,51)),(43,45))
+ for leg in [(19,30),(30,43)]:
+  im.alpha_composite(contact.crop((leg[0],45,leg[1],57)),(leg[0],45-(1 if leg==swing else 0)))
  return im
 sheet=Image.new('RGBA',(240,240))
 for row,(name,base) in enumerate([('front',front),('left',left),('right',right),('back',back)]):
- (DEST/f'girl-{name}.svg').write_text(svg_for(base,f'主人公・{name}',8),encoding='utf8')
+ # Frame 0 of every direction IS the standing drawing, so it is stored once:
+ # girl-<name>.png/.svg are both the portrait and walk frame 0.
+ (DEST/f'girl-{name}.svg').write_text(svg_for(base,f'主人公・{name}（立ち＝歩行コマ0）',8),encoding='utf8')
  base.save(DEST/f'girl-{name}.png')
  for frame in range(4):
   if name in ('left','right'):im=side_frame(left_source if name=='left' else right_source,name,frame)
   else:im=front_frame(base,frame)
   sheet.alpha_composite(im,(frame*60,row*60))
+  if frame==0:
+   assert im.tobytes()==base.tobytes(),(name,'frame 0 must stay identical to the standing drawing')
+   continue
   (DEST/f'girl-{name}-walk-{frame}.svg').write_text(svg_for(im,f'主人公・{name} 歩行 {frame}'),encoding='utf8')
+  im.save(DEST/f'girl-{name}-walk-{frame}.png')
 (DEST/'girl-walk.svg').write_text(svg_for(sheet,'主人公・四方向の歩行シート'),encoding='utf8')
-sheet.save(ROOT/'public/assets/girl-walk.png');front.save(ROOT/'public/assets/girl.png')
 (DEST/'source-palette.json').write_text(json.dumps(colors,indent=2))
-print('Generated clean front, supplied-and-cleaned left/right, back SVGs and the 16-frame PNG atlas.')
+# No duplicate copies: every stored image is a distinct frame. The game reads
+# girl-walk.svg (all 16 cells) and girl-front.png (portrait); the supplied
+# artwork stays in source/.
+cells=[sheet.crop((f*60,r*60,f*60+60,r*60+60)).tobytes() for r in range(4) for f in range(4)]
+assert len(set(cells))==16,'the sheet still repeats a frame'
+print('Generated clean front, supplied-and-cleaned left/right, back SVGs and 16 distinct frames.')
