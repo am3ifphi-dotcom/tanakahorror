@@ -13,6 +13,13 @@ Cleaning removes (1) the floor shadow oval, (2) the pale anti-aliased fringe
 left by keying a white background, (3) the white windows inside hair curls and
 (4) one-pixel wisps/jaggies, then paints a handful of explicitly listed pixels
 so the back-of-head curls become solid instead of broken rings.
+
+Update 9: the front view now carries the torch like the side views do. Dead-on
+that carry is foreshortened to two hands meeting in front of the chest with
+the lamp seen end-on, so a rim and its lit lens are painted over the dress -
+the lens in the exact colour of the game's glow dot. The back view stays as
+the clean silhouette. The front/back walk raises the body one pixel on the
+passing frames, exactly as the side views always did, instead of dipping it.
 """
 from PIL import Image, ImageDraw, ImageFilter
 from pathlib import Path
@@ -332,12 +339,48 @@ def make_back():
  return im
 back=make_back()
 
+# ---------------------------------------------------------------------------
+# The front view carries the torch toward the viewer (update 9).
+#
+# The supplied side views hold the lamp out ahead on an extended arm. From
+# dead-on the same carry is foreshortened: both hands meet in front of the
+# chest and the lamp is seen end-on, a dark rim around its lit lens. The lens
+# uses the exact colour of the game's glow dot (renderer.js '#f5dfad') so the
+# drawn lamp and the light effect merge into one. The back view keeps the
+# clean silhouette - from behind, her body hides the lamp.
+# ---------------------------------------------------------------------------
+TORCH_HOUSING=(52,50,58)   # dark metal rim of the lamp, seen end-on
+TORCH_LENS=(245,223,173)   # '#f5dfad', the colour of the game's torch dot
+def raise_torch(im):
+ def put(points,color):
+  for x,y in points:im.putpixel((x,y),rgba(color))
+ # Lamp end-on: a rounded 5x4 rim around a 3x2 lit lens, centred on x=30.
+ put([(29,30),(30,30),(31,30),(28,31),(32,31),(28,32),(32,32),
+      (29,33),(30,33),(31,33)],TORCH_HOUSING)
+ put([(29,31),(30,31),(31,31),(29,32),(30,32),(31,32)],TORCH_LENS)
+ # Hands wrapped around the lamp, lit from above.
+ put([(26,31),(27,31),(33,31),(34,31),(26,32),(27,32),(33,32),(34,32)],colors['skinLight'])
+ put([(26,33),(27,33),(33,33),(34,33)],colors['skin'])
+ # Sleeves: forearms angling from each hand out towards the hips.
+ put([(25,32),(25,33),(24,33),(24,34),(23,34),(23,35),(22,35),(22,36)],colors['clothShade'])
+ put([(35,32),(35,33),(36,33),(36,34),(37,34),(37,35),(38,35),(38,36)],colors['clothShade'])
+ return im
+
+# Both supplied front/back drawings touch the top edge with the fringe. As
+# with SIDE_DROP, everything sits one row lower on the sheet so the walking
+# frames can raise the body by a pixel without clipping the hair.
+FRONT_DROP=1
+FRONT_LEG_ROW=LEG_ROW+FRONT_DROP  # first leg row on the sheet
+front_torch=raise_torch(front)
+front_base=dropped(front_torch)
+back_base=dropped(back)
+
 def svg_for(im,name,display_scale=1):
  """Lossless SVG, on the original 60x60 pixel grid. Horizontal pixel runs only."""
  lines=['<?xml version="1.0" encoding="UTF-8"?>',
   f'<svg xmlns="http://www.w3.org/2000/svg" width="{im.width*display_scale}" height="{im.height*display_scale}" viewBox="0 0 {im.width} {im.height}" shape-rendering="crispEdges">',
   f'<title>{name}</title>',
-  '<desc>Front derived from the supplied girl_idle.png with its matte removed; back is an adaptation of it (unseen details are not assertions about the original design). Left/right are the supplied girl_left.png and girl_right.png cleaned on the original 60x60 grid: white matte, floor oval and broken curl pixels removed, edge colours un-blended from the background. Walk frames only reposition the legs.</desc>']
+  '<desc>Front derived from the supplied girl_idle.png with its matte removed, both hands raising the end-on torch lamp so the pose matches the supplied side views\' extended arm; back is an adaptation of it (unseen details are not assertions about the original design). Left/right are the supplied girl_left.png and girl_right.png cleaned on the original 60x60 grid: white matte, floor oval and broken curl pixels removed, edge colours un-blended from the background. Walk frames reposition the legs and bob the body one pixel.</desc>']
  for y in range(im.height):
   x=0
   while x<im.width:
@@ -385,7 +428,7 @@ def side_frame(source,side,frame):
  im.alpha_composite(body,(0,SIDE_DROP-lift))
  return im
 
-def mirrored_legs(base,top=LEG_ROW):
+def mirrored_legs(base,top=FRONT_LEG_ROW):
  """The opposite contact pose: the leg band reflected around its own centre.
 
  Seen from the front the two contacts of a walk (left foot forward, right foot
@@ -407,21 +450,34 @@ def front_frame(base,frame):
  """Contact / pass / opposite contact / pass, as in the side views.
 
  Frame 0 is the drawing itself and frame 2 its mirrored legs, so the two
- contacts alternate feet; frames 1 and 3 are the passes between them, with the
- body dipping one pixel and one leg lifted. The standing leg never moves, so
- the sprite keeps the same ground line in every frame.
+ contacts alternate feet; frames 1 and 3 are the passes between them: the
+ body RISES one pixel - exactly as the side views always did, instead of the
+ old dip - the hem rows are re-laid one row lower so the skirt still covers
+ the leg tops, and the swinging leg is lifted and tucked one pixel toward the
+ centre line. The standing leg never moves, so every frame keeps the same
+ ground line.
  """
  contact=base if frame<2 else mirrored_legs(base)
  if frame in (0,2):return contact.copy()
  swing=(30,43) if frame==1 else (19,30);im=Image.new('RGBA',(60,60))
- im.alpha_composite(contact.crop((0,0,60,45)),(0,1))
- im.alpha_composite(contact.crop((0,45,19,51)),(0,45))
- im.alpha_composite(contact.crop((43,45,60,51)),(43,45))
+ tuck=-1 if frame==1 else 1
+ # The body rises one pixel; the dropped base keeps an empty top row, so the
+ # fringe never clips. (crop from row 1 = paste at row 0, one pixel higher)
+ im.alpha_composite(contact.crop((0,1,60,FRONT_LEG_ROW-1)),(0,0))
  for leg in [(19,30),(30,43)]:
-  im.alpha_composite(contact.crop((leg[0],45,leg[1],57)),(leg[0],45-(1 if leg==swing else 0)))
+  moving=leg==swing
+  im.alpha_composite(contact.crop((leg[0],FRONT_LEG_ROW,leg[1],60)),
+   (leg[0]+(tuck if moving else 0),FRONT_LEG_ROW-(1 if moving else 0)))
+ # The row vacated above the leg tops is filled with the dress shade, but only
+ # over columns where the legs actually are, so the hem keeps its line without
+ # a gap (copying the pale hem row read as a bright band, and a full-width copy
+ # overhung with the side locks' hair tips).
+ shade=rgba(colors['clothShade'])
+ for x in range(19,42):
+  if contact.getpixel((x,FRONT_LEG_ROW))[3]:im.putpixel((x,FRONT_LEG_ROW-1),shade)
  return im
 sheet=Image.new('RGBA',(240,240))
-for row,(name,base) in enumerate([('front',front),('left',left),('right',right),('back',back)]):
+for row,(name,base) in enumerate([('front',front_base),('left',left),('right',right),('back',back_base)]):
  # Frame 0 of every direction IS the standing drawing, so it is stored once:
  # girl-<name>.png/.svg are both the portrait and walk frame 0.
  (DEST/f'girl-{name}.svg').write_text(svg_for(base,f'主人公・{name}（立ち＝歩行コマ0）',8),encoding='utf8')

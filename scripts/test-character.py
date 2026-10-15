@@ -20,9 +20,12 @@ for side in ['front','left','right','back']:
  assert ImageChops.difference(svg,png).getbbox() is None, side+' SVG/PNG mismatch'
  assert set(png.getchannel('A').tobytes())<={0,255},'Partial alpha/matte'
 front=Image.open(D/'girl-front.png').convert('RGBA')
-for y in range(47,60):
+# The front/back masters sit one row lower on the sheet (FRONT_DROP, mirroring
+# SIDE_DROP) so the walk can raise the body without clipping the fringe; the
+# leg band therefore starts on row 48 and the feet end on row 57.
+for y in range(48,60):
  for x in range(60):
-  if x<19 or x>40 or y>=57:assert front.getpixel((x,y))[3]==0,(x,y,'foot-side artifact')
+  if x<19 or x>40 or y>=58:assert front.getpixel((x,y))[3]==0,(x,y,'foot-side artifact')
 mask=front.getchannel('A');inside=mask.filter(ImageFilter.MinFilter(3))
 for y in range(43):
  for x in range(60):

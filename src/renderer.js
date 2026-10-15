@@ -4,9 +4,12 @@ const rand=n=>{const a=Math.sin(n*127.1+311.7)*43758.5453;return a-Math.floor(a)
 // Sheet rows: 0 front (facing the player), 1 left, 2 right, 3 back. Unit vectors of where she faces.
 const FACING=[[0,1],[-1,0],[1,0],[0,-1]];
 // Where the torch hand sits in each drawing, in world pixels from the feet anchor.
-// The side views are the supplied girl_left/girl_right icons: the near hand hangs
-// at the hip on the side she faces. Seen from behind the torch is in front of her.
-const TORCH_HAND=[[14,-16],[-15,-17],[15,-17],[0,-30]];
+// The sprite is drawn at 50x50 (5/6 of the 60px sheet), so these are the
+// measured hand/lamp positions scaled accordingly: the side views hold the
+// lamp out ahead on the supplied drawings' extended arm, the front view raises
+// both hands to the end-on lamp at the chest, and seen from behind the torch
+// is in front of her body.
+const TORCH_HAND=[[0,-22],[-12,-15],[12,-14],[0,-30]];
 export class Renderer{
  constructor(canvas){
   this.canvas=canvas;this.ctx=canvas.getContext('2d',{alpha:false});this.images={};this.cache={};this.cam={x:512,y:320};this.time=0;this.beam={x:0,y:1};this.resize();
@@ -15,7 +18,7 @@ export class Renderer{
  }
  async load(){
   await Promise.all(['interiors','room-builder','girl-walk','girl','indoor','dungeon','sheet'].map(name=>new Promise((resolve,reject)=>{
-   const im=new Image();im.onload=()=>{this.images[name]=im;resolve()};im.onerror=()=>reject(new Error(`素材を読み込めません: ${name}`));im.src=name==='girl-walk'?'/assets/character/girl-walk.svg?v=8':name==='girl'?'/assets/character/girl-front.png?v=8':`/assets/${name}.png`;
+   const im=new Image();im.onload=()=>{this.images[name]=im;resolve()};im.onerror=()=>reject(new Error(`素材を読み込めません: ${name}`));im.src=name==='girl-walk'?'/assets/character/girl-walk.svg?v=9':name==='girl'?'/assets/character/girl-front.png?v=9':`/assets/${name}.png`;
   })));
   // Color-grade once at load time, never in every animation frame.
   for(const name of ['interiors','room-builder','girl-walk']){
