@@ -466,26 +466,36 @@ def front_frame(base,frame):
  while the other is pushed AWAY from it - one pixel up (farther on the floor
  plane) and one pixel toward the centre (foreshortened), with the sock rows
  it loses hidden under the hem - so the feet visibly travel forward and back
- instead of only bobbing in place. On the strides the whole body also rises
- one pixel, the same bob the side views' passing frames always had, with the
- vacated hem row re-laid in the dress shade so no gap opens over the legs.
+ instead of only bobbing in place. The whole body above the hem also LEANS
+ one pixel toward the planted foot (weight over the stride), so the pose is
+ a step rather than the standing drawing with swapped feet - and the torch
+ dot in the renderer leans with the body (lean is added to its x). On the
+ strides the body also rises one pixel, the same bob the side views' passing
+ frames always had, with the vacated hem row re-laid in the dress shade so
+ no gap opens over the legs.
  """
  src=base if frame<2 else mirrored_legs(base)
  if frame in (0,2):return src.copy()
  back='left' if frame==1 else 'right'
+ # frame 1 plants the right foot (its band moves away), so the weight - the
+ # whole upper body - leans one pixel toward it; frame 3 mirrors that.
+ lean=1 if frame==1 else -1
  im=Image.new('RGBA',(60,60))
  bx0,bx1=FRONT_LEGS[back]
  # lifted one pixel: crop one sock row lower, so the leg also reads shorter
  im.alpha_composite(src.crop((bx0,FRONT_LEG_ROW+1,bx1,60)),(bx0+(1 if back=='left' else -1),FRONT_LEG_ROW))
  fx0,fx1=FRONT_LEGS['right' if back=='left' else 'left']
  im.alpha_composite(src.crop((fx0,FRONT_LEG_ROW,fx1,60)),(fx0,FRONT_LEG_ROW))
- # body one pixel higher on the strides: crop below the sheet's spare top row
- im.alpha_composite(src.crop((0,1,60,FRONT_LEG_ROW)),(0,0))
+ # the body above the hem leans toward the planted foot (and rides one pixel
+ # higher): cropped below the sheet's spare top row so the fringe never clips
+ im.alpha_composite(src.crop((0,1,60,FRONT_LEG_ROW)),(lean,0))
  # the row the rising body vacated is re-laid in the dress shade over the leg
  # span, so the hem still meets the legs (the slit itself stays open below).
  shade=rgba(colors['clothShade'])
  for x in range(19,42):im.putpixel((x,FRONT_LEG_ROW-1),shade)
  return im
+
+# The sheet the game reads.
 sheet=Image.new('RGBA',(240,240))
 for row,(name,base) in enumerate([('front',front_base),('left',left),('right',right),('back',back_base)]):
  # Frame 0 of every direction IS the standing drawing, so it is stored once:

@@ -224,7 +224,10 @@ export class Renderer{
   c.save();this.tile(c,'girl-walk',frame*60,dir*60,60,60,x-25,y-48+bob,50,50);c.restore();
   if(light&&dir!==3){
    // The torch glows in the hand on the side she faces (left/right/front), never behind her back.
-   const [hx,hy]=TORCH_HAND[dir],gx=x+hx,gy=y+hy+bob;
+   // On the front strides the whole body leans toward the planted foot, so
+   // the dot leans with it or the drawn fist steps away from the lamp.
+   const lean=(dir===0&&moving)?(frame===1?1:frame===3?-1:0):0;
+   const [hx,hy]=TORCH_HAND[dir],gx=x+hx+lean,gy=y+hy+bob;
    c.save();c.globalCompositeOperation='screen';const g=c.createRadialGradient(gx,gy,0,gx,gy,17);g.addColorStop(0,'#ffdc9788');g.addColorStop(1,'#edb86b00');c.fillStyle=g;c.fillRect(gx-17,gy-17,34,34);c.fillStyle='#f5dfad';c.fillRect(Math.round(gx)-1,Math.round(gy)-1,3,3);c.restore();
   }
  }
