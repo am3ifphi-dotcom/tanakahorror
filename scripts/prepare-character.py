@@ -354,16 +354,19 @@ TORCH_LENS=(245,223,173)   # '#f5dfad', the colour of the game's torch dot
 def raise_torch(im):
  def put(points,color):
   for x,y in points:im.putpixel((x,y),rgba(color))
- # Lamp end-on: a rounded 5x4 rim around a 3x2 lit lens, centred on x=30.
- put([(29,30),(30,30),(31,30),(28,31),(32,31),(28,32),(32,32),
-      (29,33),(30,33),(31,33)],TORCH_HOUSING)
- put([(29,31),(30,31),(31,31),(29,32),(30,32),(31,32)],TORCH_LENS)
- # Hands wrapped around the lamp, lit from above.
- put([(26,31),(27,31),(33,31),(34,31),(26,32),(27,32),(33,32),(34,32)],colors['skinLight'])
- put([(26,33),(27,33),(33,33),(34,33)],colors['skin'])
- # Sleeves: forearms angling from each hand out towards the hips.
- put([(25,32),(25,33),(24,33),(24,34),(23,34),(23,35),(22,35),(22,36)],colors['clothShade'])
- put([(35,32),(35,33),(36,33),(36,34),(37,34),(37,35),(38,35),(38,36)],colors['clothShade'])
+ # One-handed carry, foreshortened dead-on: the right forearm angles down
+ # from the shoulder to a fist just right of centre, and the lamp hangs from
+ # it seen end-on - the side views' extended arm, compressed toward the
+ # camera. (The right side keeps it clear of the centre parting of the fringe.)
+ # Sleeve: dress shade angling from the shoulder line down to the fist.
+ put([(41,27),(40,28),(39,29),(38,29)],colors['clothShade'])
+ # Fist wrapped over the lamp's handle.
+ put([(36,28),(37,28),(35,29),(36,29),(37,29)],colors['skinLight'])
+ # Lamp end-on under the fist: a rounded rim around a 2x2 lit lens - the
+ # lens in the exact colour of the game's glow dot ('#f5dfad') so the drawn
+ # lamp and the light effect merge into one.
+ put([(35,30),(38,30),(35,31),(38,31),(36,32),(37,32)],TORCH_HOUSING)
+ put([(36,30),(37,30),(36,31),(37,31)],TORCH_LENS)
  return im
 
 # Both supplied front/back drawings touch the top edge with the fringe. As
@@ -374,6 +377,10 @@ FRONT_LEG_ROW=LEG_ROW+FRONT_DROP  # first leg row on the sheet
 front_torch=raise_torch(front)
 front_base=dropped(front_torch)
 back_base=dropped(back)
+
+# Front-view leg bands on the sheet (x ranges), used to move each leg
+# independently. The band between them is the transparent slit.
+FRONT_LEGS={'left':(18,31),'right':(28,44)}
 
 def svg_for(im,name,display_scale=1):
  """Lossless SVG, on the original 60x60 pixel grid. Horizontal pixel runs only."""
@@ -447,34 +454,27 @@ def mirrored_legs(base,top=FRONT_LEG_ROW):
  return out
 
 def front_frame(base,frame):
- """Contact / pass / opposite contact / pass, as in the side views.
+ """Stand / right-foot stride / stand / left-foot stride.
 
- Frame 0 is the drawing itself and frame 2 its mirrored legs, so the two
- contacts alternate feet; frames 1 and 3 are the passes between them: the
- body RISES one pixel - exactly as the side views always did, instead of the
- old dip - the hem rows are re-laid one row lower so the skirt still covers
- the leg tops, and the swinging leg is lifted and tucked one pixel toward the
- centre line. The standing leg never moves, so every frame keeps the same
- ground line.
+ Frame 0 is the drawing itself (feet together - it doubles as the standing
+ art) and frame 2 its mirrored leg band, so the two "feet passing" poses
+ alternate their shading exactly like the side views' two contacts do.
+ Frames 1 and 3 are the strides: one foot stays planted toward the camera
+ while the other is pushed AWAY from it - one pixel up (farther on the floor
+ plane) and one pixel toward the centre (foreshortened), with the sock rows
+ it loses hidden under the hem - so the feet visibly travel forward and back
+ instead of only bobbing in place.
  """
- contact=base if frame<2 else mirrored_legs(base)
- if frame in (0,2):return contact.copy()
- swing=(30,43) if frame==1 else (19,30);im=Image.new('RGBA',(60,60))
- tuck=-1 if frame==1 else 1
- # The body rises one pixel; the dropped base keeps an empty top row, so the
- # fringe never clips. (crop from row 1 = paste at row 0, one pixel higher)
- im.alpha_composite(contact.crop((0,1,60,FRONT_LEG_ROW-1)),(0,0))
- for leg in [(19,30),(30,43)]:
-  moving=leg==swing
-  im.alpha_composite(contact.crop((leg[0],FRONT_LEG_ROW,leg[1],60)),
-   (leg[0]+(tuck if moving else 0),FRONT_LEG_ROW-(1 if moving else 0)))
- # The row vacated above the leg tops is filled with the dress shade, but only
- # over columns where the legs actually are, so the hem keeps its line without
- # a gap (copying the pale hem row read as a bright band, and a full-width copy
- # overhung with the side locks' hair tips).
- shade=rgba(colors['clothShade'])
- for x in range(19,42):
-  if contact.getpixel((x,FRONT_LEG_ROW))[3]:im.putpixel((x,FRONT_LEG_ROW-1),shade)
+ src=base if frame<2 else mirrored_legs(base)
+ if frame in (0,2):return src.copy()
+ back='left' if frame==1 else 'right'
+ im=Image.new('RGBA',(60,60))
+ bx0,bx1=FRONT_LEGS[back]
+ # lifted one pixel: crop one sock row lower, so the leg also reads shorter
+ im.alpha_composite(src.crop((bx0,FRONT_LEG_ROW+1,bx1,60)),(bx0+(1 if back=='left' else -1),FRONT_LEG_ROW))
+ fx0,fx1=FRONT_LEGS['right' if back=='left' else 'left']
+ im.alpha_composite(src.crop((fx0,FRONT_LEG_ROW,fx1,60)),(fx0,FRONT_LEG_ROW))
+ im.alpha_composite(src.crop((0,0,60,FRONT_LEG_ROW)),(0,0))
  return im
 sheet=Image.new('RGBA',(240,240))
 for row,(name,base) in enumerate([('front',front_base),('left',left),('right',right),('back',back_base)]):

@@ -6,10 +6,10 @@ const FACING=[[0,1],[-1,0],[1,0],[0,-1]];
 // Where the torch hand sits in each drawing, in world pixels from the feet anchor.
 // The sprite is drawn at 50x50 (5/6 of the 60px sheet), so these are the
 // measured hand/lamp positions scaled accordingly: the side views hold the
-// lamp out ahead on the supplied drawings' extended arm, the front view raises
-// both hands to the end-on lamp at the chest, and seen from behind the torch
+// lamp out ahead on the supplied drawings' extended arm, the front view
+// carries it one-handed just right of centre, and seen from behind the torch
 // is in front of her body.
-const TORCH_HAND=[[0,-22],[-12,-15],[12,-14],[0,-30]];
+const TORCH_HAND=[[7,-22],[-12,-15],[12,-14],[0,-30]];
 export class Renderer{
  constructor(canvas){
   this.canvas=canvas;this.ctx=canvas.getContext('2d',{alpha:false});this.images={};this.cache={};this.cam={x:512,y:320};this.time=0;this.beam={x:0,y:1};this.resize();
@@ -18,7 +18,7 @@ export class Renderer{
  }
  async load(){
   await Promise.all(['interiors','room-builder','girl-walk','girl','indoor','dungeon','sheet'].map(name=>new Promise((resolve,reject)=>{
-   const im=new Image();im.onload=()=>{this.images[name]=im;resolve()};im.onerror=()=>reject(new Error(`素材を読み込めません: ${name}`));im.src=name==='girl-walk'?'/assets/character/girl-walk.svg?v=9':name==='girl'?'/assets/character/girl-front.png?v=9':`/assets/${name}.png`;
+   const im=new Image();im.onload=()=>{this.images[name]=im;resolve()};im.onerror=()=>reject(new Error(`素材を読み込めません: ${name}`));im.src=name==='girl-walk'?'/assets/character/girl-walk.svg?v=10':name==='girl'?'/assets/character/girl-front.png?v=10':`/assets/${name}.png`;
   })));
   // Color-grade once at load time, never in every animation frame.
   for(const name of ['interiors','room-builder','girl-walk']){
@@ -47,14 +47,21 @@ export class Renderer{
   const [l,t,r,b]=room.bounds,wallTop=115;
   c.fillStyle='#081214';c.fillRect(0,0,1024,640);
   // Masonry, wallpaper, herringbone floors and furniture are assembled from licensed sheets.
+  // Tile choices are measured for edge luminance so repeats never show a seam:
+  // the herringbone uses the one seamless column (13) with the two rows
+  // alternating vertically, and the stone floor stacks row 10 over row 9.
   c.save();
   for(let y=t;y<b;y+=32)for(let x=l;x<r;x+=32){
-   const row=room.floor==='wood'?13+Math.floor((y-t)/32)%2:9+Math.floor((y-t)/32)%2;
-   this.tile(c,'room-builder',(11+Math.floor((x-l)/32)%3)*32,row*32,32,32,x,y,32,32);
+   const phase=Math.floor((y-t)/32)%2;
+   const row=room.floor==='wood'?(phase?14:13):(phase?9:10),col=room.floor==='wood'?13:11;
+   this.tile(c,'room-builder',col*32,row*32,32,32,x,y,32,32);
   }
   for(let x=l;x<r;x+=32){
+   // Wall column 1 is the seamless repeat for every wall style (col 3 draws
+   // a frame line every tile); the baseboard strip uses col 3, which repeats
+   // without the faint joint column 1 shows.
    this.tile(c,'room-builder',32,room.wall*32,32,64,x,wallTop,32,96);
-   this.tile(c,'room-builder',32,13*32,32,64,x,wallTop+89,32,44);
+   this.tile(c,'room-builder',3*32,13*32,32,64,x,wallTop+89,32,44);
   }
   c.restore();
   // Deep mouldings create a dollhouse cutaway, rather than flat map boundaries.

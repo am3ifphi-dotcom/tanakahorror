@@ -48,7 +48,7 @@ def interior_gaps(im,y):
    runs.append((x,end-1));x=end
   else:x+=1
  return runs
-for label in ['front','back']+[f'{v}-walk-{f}' for v in ['front','back'] for f in (1,2,3)]:
+for label in ['front','back']:
  im=Image.open(D/f'girl-{label}.png').convert('RGBA')
  slit={y:[(a,b) for a,b in interior_gaps(im,y) if 24<=a and b<=36] for y in range(45,59)}
  rows=[y for y,runs in slit.items() if runs]
@@ -61,6 +61,21 @@ for label in ['front','back']+[f'{v}-walk-{f}' for v in ['front','back'] for f i
   for x in (a-1,b+1):
    r,g,bl,_=im.getpixel((x,y));lum=(r*299+g*587+bl*114)//1000
    assert not (max(r,g,bl)-min(r,g,bl)<20 and lum>=128),(label,x,y,'white matte left beside the slit')
+
+# The front/back WALK frames move each leg for real: on the stride frames the
+# pushed-back foot rises off the ground line, so the opening between the legs
+# legitimately widens. There the requirement is only that the legs are not
+# fused and that no white matte survives along any opening.
+for label in [f'front-walk-{f}' for f in (1,2,3)]+[f'back-walk-{f}' for f in (1,2,3)]:
+ im=Image.open(D/f'girl-{label}.png').convert('RGBA')
+ gaps={y:interior_gaps(im,y) for y in range(45,59)}
+ rows=[y for y,runs in gaps.items() if any(24<=a and b<=36 for a,b in runs)]
+ assert len(rows)>=4,(label,'walk legs fused: no opening between them',rows)
+ for y in rows:
+  for a,b in gaps[y]:
+   for x in (a-1,b+1):
+    r,g,bl,_=im.getpixel((x,y));lum=(r*299+g*587+bl*114)//1000
+    assert not (max(r,g,bl)-min(r,g,bl)<20 and lum>=128),(label,x,y,'white matte beside the leg opening')
 
 # Side views come from the supplied girl_left.png / girl_right.png, so they are
 # distinct drawings (not mirrors). What must hold: no whitish/grey background
