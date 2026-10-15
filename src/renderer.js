@@ -9,7 +9,7 @@ const FACING=[[0,1],[-1,0],[1,0],[0,-1]];
 // lamp out ahead on the supplied drawings' extended arm, the front view
 // carries it one-handed just right of centre, and seen from behind the torch
 // is in front of her body.
-const TORCH_HAND=[[7,-22],[-12,-15],[12,-14],[0,-30]];
+const TORCH_HAND=[[7,-17],[-12,-15],[12,-14],[0,-30]];
 export class Renderer{
  constructor(canvas){
   this.canvas=canvas;this.ctx=canvas.getContext('2d',{alpha:false});this.images={};this.cache={};this.cam={x:512,y:320};this.time=0;this.beam={x:0,y:1};this.resize();
@@ -18,7 +18,7 @@ export class Renderer{
  }
  async load(){
   await Promise.all(['interiors','room-builder','girl-walk','girl','indoor','dungeon','sheet'].map(name=>new Promise((resolve,reject)=>{
-   const im=new Image();im.onload=()=>{this.images[name]=im;resolve()};im.onerror=()=>reject(new Error(`素材を読み込めません: ${name}`));im.src=name==='girl-walk'?'/assets/character/girl-walk.svg?v=10':name==='girl'?'/assets/character/girl-front.png?v=10':`/assets/${name}.png`;
+   const im=new Image();im.onload=()=>{this.images[name]=im;resolve()};im.onerror=()=>reject(new Error(`素材を読み込めません: ${name}`));im.src=name==='girl-walk'?'/assets/character/girl-walk.svg?v=11':name==='girl'?'/assets/character/girl-front.png?v=11':`/assets/${name}.png`;
   })));
   // Color-grade once at load time, never in every animation frame.
   for(const name of ['interiors','room-builder','girl-walk']){
@@ -79,7 +79,7 @@ export class Renderer{
   c.restore();
   // Window pools extend across floor, with the mullion cutting the light.
   for(const p of room.props.filter(p=>p.sprite==='window')){
-   const x=p.x+22,y=228;
+   const x=p.x+16,y=228;
    c.save();c.globalCompositeOperation='screen';
    const g=c.createLinearGradient(x,y,x+30,500);g.addColorStop(0,'#6ea1a831');g.addColorStop(1,'#366a7100');c.fillStyle=g;
    c.beginPath();c.moveTo(x,y);c.lineTo(x+52,y);c.lineTo(x+160,499);c.lineTo(x+22,499);c.closePath();c.fill();
@@ -127,8 +127,8 @@ export class Renderer{
   // Tiny moving rain behind, not over, the room's windows.
   for(const p of room.props.filter(p=>p.sprite==='window')){
    c.save();c.globalAlpha=.7;this.sprite(c,p.sprite,p.x,p.y,p.scale);c.restore();
-   c.save();c.beginPath();c.rect(p.x+29*p.scale,p.y+10*p.scale,38*p.scale,34*p.scale);c.clip();
-   c.fillStyle='#1b515a66';c.fillRect(p.x,p.y,110,64);c.strokeStyle='#9bcecd55';c.lineWidth=1;
+   c.save();c.beginPath();c.rect(p.x+8*p.scale,p.y+14*p.scale,44*p.scale,38*p.scale);c.clip();
+   c.fillStyle='#1b515a66';c.fillRect(p.x+6*p.scale,p.y+13*p.scale,46*p.scale,40*p.scale);c.strokeStyle='#9bcecd55';c.lineWidth=1;
    for(let i=0;i<16;i++){const rx=p.x+rand(i+45)*100,ry=p.y+((rand(i+88)*90+t*57)%85);c.beginPath();c.moveTo(rx,ry);c.lineTo(rx-2,ry+8);c.stroke();}c.restore();
   }
   let entities=room.props.filter(p=>p.sprite!=='window').map(p=>({type:'prop',data:p,y:p.y+SPRITES[p.sprite][3]*32*p.scale*.95}));

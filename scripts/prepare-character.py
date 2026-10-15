@@ -354,19 +354,20 @@ TORCH_LENS=(245,223,173)   # '#f5dfad', the colour of the game's torch dot
 def raise_torch(im):
  def put(points,color):
   for x,y in points:im.putpixel((x,y),rgba(color))
- # One-handed carry, foreshortened dead-on: the right forearm angles down
- # from the shoulder to a fist just right of centre, and the lamp hangs from
- # it seen end-on - the side views' extended arm, compressed toward the
- # camera. (The right side keeps it clear of the centre parting of the fringe.)
+ # One-handed carry, foreshortened dead-on, held LOW like the side views:
+ # the right forearm angles down from the shoulder to a fist at hip height,
+ # and the lamp hangs from it seen end-on - the side views' extended arm,
+ # compressed toward the camera, at the same low carry (their lamp sits at
+ # about half the figure's height, so this one must not ride at the chest).
  # Sleeve: dress shade angling from the shoulder line down to the fist.
- put([(41,27),(40,28),(39,29),(38,29)],colors['clothShade'])
+ put([(41,31),(40,32),(39,33),(38,34)],colors['clothShade'])
  # Fist wrapped over the lamp's handle.
- put([(36,28),(37,28),(35,29),(36,29),(37,29)],colors['skinLight'])
+ put([(36,34),(37,34),(35,35),(36,35),(37,35)],colors['skinLight'])
  # Lamp end-on under the fist: a rounded rim around a 2x2 lit lens - the
  # lens in the exact colour of the game's glow dot ('#f5dfad') so the drawn
  # lamp and the light effect merge into one.
- put([(35,30),(38,30),(35,31),(38,31),(36,32),(37,32)],TORCH_HOUSING)
- put([(36,30),(37,30),(36,31),(37,31)],TORCH_LENS)
+ put([(35,36),(38,36),(35,37),(38,37),(36,38),(37,38)],TORCH_HOUSING)
+ put([(36,36),(37,36),(36,37),(37,37)],TORCH_LENS)
  return im
 
 # Both supplied front/back drawings touch the top edge with the fringe. As
