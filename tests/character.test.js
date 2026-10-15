@@ -64,6 +64,6 @@ test('every stored frame is unique: the standing art is walk frame 0, not a copy
 });
 test('dialogue portrait uses the cleaned, versioned SVG rather than the stale icon',()=>{
  const html=fs.readFileSync('index.html','utf8');
- assert.match(html,/class="dialogue-portrait"><img src="\/assets\/character\/girl-front\.svg\?v=8"/);
+ assert.match(html,/class="dialogue-portrait"><img src="\/assets\/character\/girl-front\.svg\?v=12"/);
  assert.doesNotMatch(html,/src="\/assets\/girl\.png"/);
 });

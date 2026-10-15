@@ -4,9 +4,12 @@ const rand=n=>{const a=Math.sin(n*127.1+311.7)*43758.5453;return a-Math.floor(a)
 // Sheet rows: 0 front (facing the player), 1 left, 2 right, 3 back. Unit vectors of where she faces.
 const FACING=[[0,1],[-1,0],[1,0],[0,-1]];
 // Where the torch hand sits in each drawing, in world pixels from the feet anchor.
-// The side views are the supplied girl_left/girl_right icons: the near hand hangs
-// at the hip on the side she faces. Seen from behind the torch is in front of her.
-const TORCH_HAND=[[14,-16],[-15,-17],[15,-17],[0,-30]];
+// The sprite is drawn at 50x50 (5/6 of the 60px sheet), so these are the
+// measured hand/lamp positions scaled accordingly: the side views hold the
+// lamp out ahead on the supplied drawings' extended arm, the front view
+// carries it one-handed just right of centre, and seen from behind the torch
+// is in front of her body.
+const TORCH_HAND=[[6,-13],[-12,-15],[12,-14],[0,-30]];
 export class Renderer{
  constructor(canvas){
   this.canvas=canvas;this.ctx=canvas.getContext('2d',{alpha:false});this.images={};this.cache={};this.cam={x:512,y:320};this.time=0;this.beam={x:0,y:1};this.resize();
@@ -15,7 +18,7 @@ export class Renderer{
  }
  async load(){
   await Promise.all(['interiors','room-builder','girl-walk','girl','indoor','dungeon','sheet'].map(name=>new Promise((resolve,reject)=>{
-   const im=new Image();im.onload=()=>{this.images[name]=im;resolve()};im.onerror=()=>reject(new Error(`素材を読み込めません: ${name}`));im.src=name==='girl-walk'?'/assets/character/girl-walk.svg?v=8':name==='girl'?'/assets/character/girl-front.png?v=8':`/assets/${name}.png`;
+   const im=new Image();im.onload=()=>{this.images[name]=im;resolve()};im.onerror=()=>reject(new Error(`素材を読み込めません: ${name}`));im.src=name==='girl-walk'?'/assets/character/girl-walk.svg?v=12':name==='girl'?'/assets/character/girl-front.png?v=12':`/assets/${name}.png`;
   })));
   // Color-grade once at load time, never in every animation frame.
   for(const name of ['interiors','room-builder','girl-walk']){
@@ -44,14 +47,21 @@ export class Renderer{
   const [l,t,r,b]=room.bounds,wallTop=115;
   c.fillStyle='#081214';c.fillRect(0,0,1024,640);
   // Masonry, wallpaper, herringbone floors and furniture are assembled from licensed sheets.
+  // Tile choices are measured for edge luminance so repeats never show a seam:
+  // the herringbone uses the one seamless column (13) with the two rows
+  // alternating vertically, and the stone floor stacks row 10 over row 9.
   c.save();
   for(let y=t;y<b;y+=32)for(let x=l;x<r;x+=32){
-   const row=room.floor==='wood'?13+Math.floor((y-t)/32)%2:9+Math.floor((y-t)/32)%2;
-   this.tile(c,'room-builder',(11+Math.floor((x-l)/32)%3)*32,row*32,32,32,x,y,32,32);
+   const phase=Math.floor((y-t)/32)%2;
+   const row=room.floor==='wood'?(phase?14:13):(phase?9:10),col=room.floor==='wood'?13:11;
+   this.tile(c,'room-builder',col*32,row*32,32,32,x,y,32,32);
   }
   for(let x=l;x<r;x+=32){
+   // Wall column 1 is the seamless repeat for every wall style (col 3 draws
+   // a frame line every tile); the baseboard strip uses col 3, which repeats
+   // without the faint joint column 1 shows.
    this.tile(c,'room-builder',32,room.wall*32,32,64,x,wallTop,32,96);
-   this.tile(c,'room-builder',32,13*32,32,64,x,wallTop+89,32,44);
+   this.tile(c,'room-builder',3*32,13*32,32,64,x,wallTop+89,32,44);
   }
   c.restore();
   // Deep mouldings create a dollhouse cutaway, rather than flat map boundaries.
@@ -69,7 +79,7 @@ export class Renderer{
   c.restore();
   // Window pools extend across floor, with the mullion cutting the light.
   for(const p of room.props.filter(p=>p.sprite==='window')){
-   const x=p.x+22,y=228;
+   const x=p.x+16,y=228;
    c.save();c.globalCompositeOperation='screen';
    const g=c.createLinearGradient(x,y,x+30,500);g.addColorStop(0,'#6ea1a831');g.addColorStop(1,'#366a7100');c.fillStyle=g;
    c.beginPath();c.moveTo(x,y);c.lineTo(x+52,y);c.lineTo(x+160,499);c.lineTo(x+22,499);c.closePath();c.fill();
@@ -117,8 +127,8 @@ export class Renderer{
   // Tiny moving rain behind, not over, the room's windows.
   for(const p of room.props.filter(p=>p.sprite==='window')){
    c.save();c.globalAlpha=.7;this.sprite(c,p.sprite,p.x,p.y,p.scale);c.restore();
-   c.save();c.beginPath();c.rect(p.x+29*p.scale,p.y+10*p.scale,38*p.scale,34*p.scale);c.clip();
-   c.fillStyle='#1b515a66';c.fillRect(p.x,p.y,110,64);c.strokeStyle='#9bcecd55';c.lineWidth=1;
+   c.save();c.beginPath();c.rect(p.x+8*p.scale,p.y+14*p.scale,44*p.scale,38*p.scale);c.clip();
+   c.fillStyle='#1b515a66';c.fillRect(p.x+6*p.scale,p.y+13*p.scale,46*p.scale,40*p.scale);c.strokeStyle='#9bcecd55';c.lineWidth=1;
    for(let i=0;i<16;i++){const rx=p.x+rand(i+45)*100,ry=p.y+((rand(i+88)*90+t*57)%85);c.beginPath();c.moveTo(rx,ry);c.lineTo(rx-2,ry+8);c.stroke();}c.restore();
   }
   let entities=room.props.filter(p=>p.sprite!=='window').map(p=>({type:'prop',data:p,y:p.y+SPRITES[p.sprite][3]*32*p.scale*.95}));
@@ -203,7 +213,10 @@ export class Renderer{
  }
  drawPlayer(c,x,y,dir,moving,t,light){
   c.fillStyle='#03090bad';c.beginPath();c.ellipse(x,y-2,18,6,0,0,Math.PI*2);c.fill();
-  const frame=moving?Math.floor(t*8)%4:0,bob=moving?0:Math.sin(t*1.65)*.7;
+  // The art itself bobs: the passing/stride frames (1 and 3, every direction)
+  // carry the body one pixel higher, so the torch dot must ride the same
+  // pixel or it detaches from the drawn fist on half of the walk cycle.
+  const frame=moving?Math.floor(t*8)%4:0,bob=moving?(frame%2?-1:0):Math.sin(t*1.65)*.7;
   if(light&&dir===3){
    // Facing away: the torch is in front of her body, so only its spill rims her hair and shoulders.
    c.save();c.globalCompositeOperation='screen';const g=c.createRadialGradient(x,y-30,0,x,y-30,26);g.addColorStop(0,'#ffdc9752');g.addColorStop(1,'#edb86b00');c.fillStyle=g;c.fillRect(x-26,y-56,52,52);c.restore();
@@ -211,7 +224,10 @@ export class Renderer{
   c.save();this.tile(c,'girl-walk',frame*60,dir*60,60,60,x-25,y-48+bob,50,50);c.restore();
   if(light&&dir!==3){
    // The torch glows in the hand on the side she faces (left/right/front), never behind her back.
-   const [hx,hy]=TORCH_HAND[dir],gx=x+hx,gy=y+hy+bob;
+   // On the front strides the whole body leans toward the planted foot, so
+   // the dot leans with it or the drawn fist steps away from the lamp.
+   const lean=(dir===0&&moving)?(frame===1?1:frame===3?-1:0):0;
+   const [hx,hy]=TORCH_HAND[dir],gx=x+hx+lean,gy=y+hy+bob;
    c.save();c.globalCompositeOperation='screen';const g=c.createRadialGradient(gx,gy,0,gx,gy,17);g.addColorStop(0,'#ffdc9788');g.addColorStop(1,'#edb86b00');c.fillStyle=g;c.fillRect(gx-17,gy-17,34,34);c.fillStyle='#f5dfad';c.fillRect(Math.round(gx)-1,Math.round(gy)-1,3,3);c.restore();
   }
  }
