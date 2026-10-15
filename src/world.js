@@ -21,7 +21,7 @@ const p=(sprite,x,y,scale=1,extra={})=>({sprite,x,y,scale,...extra});
 const h=(id,label,x,y,extra={})=>({id,label,x,y,r:62,...extra});
 export const ROOMS={
  foyer:{name:ROOM_NAMES.foyer,wall:19,floor:'wood',bounds:[104,248,920,558],
-  props:[p('window',290,143,1.15),p('window',730,143,1.15),p('wardrobe',806,184,1.1),p('sofa',684,332,1.25),p('plant',841,397,.9),p('chest',212,317,1.1),p('phone',230,306,.9),p('deskSide',341,208,.85),p('paper',348,204,.65),p('frame',415,154,.9),p('lamp',639,274,1),p('smallPlant',196,249,.8)],
+  props:[p('window',290,143,1.15),p('window',730,143,1.15),p('wardrobe',806,196,1.1),p('sofa',684,332,1.25),p('plant',841,397,.9),p('chest',212,317,1.1),p('phone',230,306,.9),p('deskSide',341,208,.85),p('paper',348,204,.65),p('frame',415,154,.9),p('lamp',639,274,1),p('smallPlant',196,249,.8)],
   rug:{sprite:'rug',x:424,y:334,scale:1.35},lights:[{x:654,y:287,r:220,color:'warm'},{x:775,y:226,r:180,color:'cold'},{x:333,y:224,r:140,color:'cold'}],
   doors:[{id:'to-hall',label:'渡り廊下へ',x:526,y:241,side:'top',to:'hall',spawn:[512,490]},{id:'exit',label:'玄関の扉',x:111,y:456,side:'left'}],
   hotspots:[h('phone','受話器',247,378),h('letter','母の置き手紙',365,290),h('photo','家族写真',432,254)],

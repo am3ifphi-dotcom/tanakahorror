@@ -9,7 +9,7 @@ const FACING=[[0,1],[-1,0],[1,0],[0,-1]];
 // lamp out ahead on the supplied drawings' extended arm, the front view
 // carries it one-handed just right of centre, and seen from behind the torch
 // is in front of her body.
-const TORCH_HAND=[[7,-17],[-12,-15],[12,-14],[0,-30]];
+const TORCH_HAND=[[7,-14],[-12,-15],[12,-14],[0,-30]];
 export class Renderer{
  constructor(canvas){
   this.canvas=canvas;this.ctx=canvas.getContext('2d',{alpha:false});this.images={};this.cache={};this.cam={x:512,y:320};this.time=0;this.beam={x:0,y:1};this.resize();
@@ -18,7 +18,7 @@ export class Renderer{
  }
  async load(){
   await Promise.all(['interiors','room-builder','girl-walk','girl','indoor','dungeon','sheet'].map(name=>new Promise((resolve,reject)=>{
-   const im=new Image();im.onload=()=>{this.images[name]=im;resolve()};im.onerror=()=>reject(new Error(`素材を読み込めません: ${name}`));im.src=name==='girl-walk'?'/assets/character/girl-walk.svg?v=11':name==='girl'?'/assets/character/girl-front.png?v=11':`/assets/${name}.png`;
+   const im=new Image();im.onload=()=>{this.images[name]=im;resolve()};im.onerror=()=>reject(new Error(`素材を読み込めません: ${name}`));im.src=name==='girl-walk'?'/assets/character/girl-walk.svg?v=12':name==='girl'?'/assets/character/girl-front.png?v=12':`/assets/${name}.png`;
   })));
   // Color-grade once at load time, never in every animation frame.
   for(const name of ['interiors','room-builder','girl-walk']){

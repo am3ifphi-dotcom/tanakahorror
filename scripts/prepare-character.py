@@ -355,19 +355,19 @@ def raise_torch(im):
  def put(points,color):
   for x,y in points:im.putpixel((x,y),rgba(color))
  # One-handed carry, foreshortened dead-on, held LOW like the side views:
- # the right forearm angles down from the shoulder to a fist at hip height,
- # and the lamp hangs from it seen end-on - the side views' extended arm,
- # compressed toward the camera, at the same low carry (their lamp sits at
- # about half the figure's height, so this one must not ride at the chest).
- # Sleeve: dress shade angling from the shoulder line down to the fist.
- put([(41,31),(40,32),(39,33),(38,34)],colors['clothShade'])
+ # the right forearm runs down along the dress edge to a fist at thigh level,
+ # and the lamp hangs from it seen end-on. Lowered until the on-screen lamp
+ # height matches the side views exactly (game offset -15, like the left
+ # view's -15 / right view's -14 - the user compared them side by side).
+ # Sleeve: dress shade hugging the dress' right edge, clear of the hair lock.
+ put([(37,34),(36,35),(37,35),(36,36),(37,36),(36,37),(37,37)],colors['clothShade'])
  # Fist wrapped over the lamp's handle.
- put([(36,34),(37,34),(35,35),(36,35),(37,35)],colors['skinLight'])
+ put([(35,38),(36,38),(37,38),(35,39),(36,39),(37,39)],colors['skinLight'])
  # Lamp end-on under the fist: a rounded rim around a 2x2 lit lens - the
  # lens in the exact colour of the game's glow dot ('#f5dfad') so the drawn
  # lamp and the light effect merge into one.
- put([(35,36),(38,36),(35,37),(38,37),(36,38),(37,38)],TORCH_HOUSING)
- put([(36,36),(37,36),(36,37),(37,37)],TORCH_LENS)
+ put([(35,40),(38,40),(35,41),(38,41),(36,42),(37,42)],TORCH_HOUSING)
+ put([(36,40),(37,40),(36,41),(37,41)],TORCH_LENS)
  return im
 
 # Both supplied front/back drawings touch the top edge with the fringe. As
@@ -464,7 +464,9 @@ def front_frame(base,frame):
  while the other is pushed AWAY from it - one pixel up (farther on the floor
  plane) and one pixel toward the centre (foreshortened), with the sock rows
  it loses hidden under the hem - so the feet visibly travel forward and back
- instead of only bobbing in place.
+ instead of only bobbing in place. On the strides the whole body also rises
+ one pixel, the same bob the side views' passing frames always had, with the
+ vacated hem row re-laid in the dress shade so no gap opens over the legs.
  """
  src=base if frame<2 else mirrored_legs(base)
  if frame in (0,2):return src.copy()
@@ -475,7 +477,12 @@ def front_frame(base,frame):
  im.alpha_composite(src.crop((bx0,FRONT_LEG_ROW+1,bx1,60)),(bx0+(1 if back=='left' else -1),FRONT_LEG_ROW))
  fx0,fx1=FRONT_LEGS['right' if back=='left' else 'left']
  im.alpha_composite(src.crop((fx0,FRONT_LEG_ROW,fx1,60)),(fx0,FRONT_LEG_ROW))
- im.alpha_composite(src.crop((0,0,60,FRONT_LEG_ROW)),(0,0))
+ # body one pixel higher on the strides: crop below the sheet's spare top row
+ im.alpha_composite(src.crop((0,1,60,FRONT_LEG_ROW)),(0,0))
+ # the row the rising body vacated is re-laid in the dress shade over the leg
+ # span, so the hem still meets the legs (the slit itself stays open below).
+ shade=rgba(colors['clothShade'])
+ for x in range(19,42):im.putpixel((x,FRONT_LEG_ROW-1),shade)
  return im
 sheet=Image.new('RGBA',(240,240))
 for row,(name,base) in enumerate([('front',front_base),('left',left),('right',right),('back',back_base)]):
