@@ -1,8 +1,9 @@
 """Build pixel-grid SVG masters and a four-direction sprite sheet.
 
-Sources (all 60x60, left untouched in the repository root):
-- girl_idle.png  -> front view (original pixels; only the white matte and the
-                    baked floor oval are removed) and the derived back view.
+Sources (all 60x60, kept untouched in source/):
+- girl_idle.png  -> front view (original pixels; only the white matte, the
+                    baked floor oval and the white background trapped between
+                    the legs are removed) and the derived back view.
 - girl_left.png  -> left view.   Supplied artwork, cleaned on its own grid.
 - girl_right.png -> right view.  Supplied artwork, cleaned on its own grid.
 
@@ -22,7 +23,7 @@ import numpy as np
 ROOT=Path(__file__).resolve().parents[1]
 DEST=ROOT/'public/assets/character'
 DEST.mkdir(parents=True,exist_ok=True)
-src=Image.open(ROOT/'girl_idle.png').convert('RGBA')
+src=Image.open(ROOT/'source'/'girl_idle.png').convert('RGBA')
 
 def rgba(c):return tuple(c)+(255,) if len(c)==3 else tuple(c)
 def sample(x,y):return src.getpixel((x,y))[:3]
@@ -42,6 +43,34 @@ colors['hairDark']=sample(14,19)
 def poly(im,points,color):ImageDraw.Draw(im).polygon(points,fill=rgba(color))
 def rect(im,box,color):ImageDraw.Draw(im).rectangle(box,fill=rgba(color))
 def line(im,points,color,width=1):ImageDraw.Draw(im).line(points,fill=rgba(color),width=width)
+
+LEG_ROW=47  # the dress hem ends on row 46, so the legs start here
+def clear_leg_gap(im,top=LEG_ROW):
+ """Open the slit between the legs.
+
+ Keying the white studio background only reaches the silhouette. The slit
+ between the legs is enclosed - hem above, a leg on either side, the shoes
+ touching below - so its pale pixels survived and the legs looked webbed
+ together by a white block. Flood the slit from the first leg row using the
+ same "pale and desaturated" test as the matte pass, so only background
+ pixels are dropped and the white socks beside it are untouched.
+ """
+ def pale(x,y):
+  r,g,b,a=im.getpixel((x,y));return a and min(r,g,b)>100 and max(r,g,b)-min(r,g,b)<32
+ def dark(x,y):
+  r,g,b,a=im.getpixel((x,y));return a and (r*299+g*587+b*114)//1000<80
+ # Seeds: pale pixels on the first leg row that have a leg outline on each side.
+ seeds=[(x,top) for x in range(60) if pale(x,top)
+        and any(dark(i,top) for i in range(x)) and any(dark(i,top) for i in range(x+1,60))]
+ gap=set(seeds);queue=deque(seeds)
+ while queue:
+  x,y=queue.popleft()
+  for q in [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]:
+   if 0<=q[0]<60 and top<=q[1]<60 and q not in gap and pale(*q):gap.add(q);queue.append(q)
+ width=max(x for x,_ in gap)-min(x for x,_ in gap)+1
+ assert 0<len(gap)<40 and width<=4,('leg-gap flood escaped into the legs',len(gap),width)
+ for point in gap:im.putpixel(point,(0,0,0,0))
+ return sorted(gap)
 
 def clean_source():
  im=src.copy()
@@ -82,6 +111,7 @@ def clean_source():
    hair=(y<19 or (x<16 or x>44) and y<43)
    if a and hair and inside.getpixel((x,y))==0 and max(r,g,b)-min(r,g,b)<40:
     im.putpixel((x,y),rgba(colors['hairShade']))
+ clear_leg_gap(im)
  # Strip isolated matte islands; protect all genuine connected body details.
  mask=im.getchannel('A')
  for y in range(1,57):
@@ -257,7 +287,7 @@ class SideView:
   return Image.fromarray(res,'RGBA')
 
 def make_left(log=None):
- v=SideView(ROOT/'girl_left.png',log);v.remove_background();v.refine_outline();v.refine_interior()
+ v=SideView(ROOT/'source'/'girl_left.png',log);v.remove_background();v.refine_outline();v.refine_interior()
  # Dress showing through a split in the front lock: a lone bright speck at game scale.
  v.paint(box(9,41,11,42),sample_box=(6,43,11,45))
  # Back of the head: detached ring of a curl, and the background windows of two curls.
@@ -268,7 +298,7 @@ def make_left(log=None):
  return v.image()
 
 def make_right(log=None):
- v=SideView(ROOT/'girl_right.png',log);v.remove_background();v.refine_outline();v.refine_interior()
+ v=SideView(ROOT/'source'/'girl_right.png',log);v.remove_background();v.refine_outline();v.refine_interior()
  # Back of the head (left side): detached ring of a curl and its window.
  v.erase(box(0,19,3,27));v.paint(box(4,21,5,25))
  v.hem({0:-1,1:35,2:35,3:35,4:36,5:36,6:36,7:37,8:37,9:37,10:36,11:36,12:36},(33,40))
@@ -373,7 +403,14 @@ for row,(name,base) in enumerate([('front',front),('left',left),('right',right),
   else:im=front_frame(base,frame)
   sheet.alpha_composite(im,(frame*60,row*60))
   (DEST/f'girl-{name}-walk-{frame}.svg').write_text(svg_for(im,f'主人公・{name} 歩行 {frame}'),encoding='utf8')
+  im.save(DEST/f'girl-{name}-walk-{frame}.png')
 (DEST/'girl-walk.svg').write_text(svg_for(sheet,'主人公・四方向の歩行シート'),encoding='utf8')
 sheet.save(ROOT/'public/assets/girl-walk.png');front.save(ROOT/'public/assets/girl.png')
 (DEST/'source-palette.json').write_text(json.dumps(colors,indent=2))
+# Replace the repository-root standing pictures (which still carry the untrimmed
+# white matte) with the cleaned versions, so the root files are the trimmed art.
+front.save(ROOT/'girl_idle.png')
+left.save(ROOT/'girl_left.png')
+right.save(ROOT/'girl_right.png')
+back.save(ROOT/'girl_back.png')
 print('Generated clean front, supplied-and-cleaned left/right, back SVGs and the 16-frame PNG atlas.')

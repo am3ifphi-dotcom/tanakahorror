@@ -26,8 +26,24 @@ test('torch glow follows the facing direction instead of sitting on one side',()
  assert.match(renderer,/const TORCH_HAND=\[\[[-\d.]+,[-\d.]+\],\[-[\d.]+,[-\d.]+\],\[[\d.]+,[-\d.]+\],\[[-\d.]+,[-\d.]+\]\]/);
  assert.match(renderer,/TORCH_HAND\[dir\]/);assert.match(renderer,/FACING\[dir\]/);
 });
+test('the background shows between the legs instead of the supplied white matte',()=>{
+ for(const view of ['front','back']){
+  const svg=fs.readFileSync(`public/assets/character/girl-${view}.svg`,'utf8');
+  const filled=Array.from({length:60},()=>new Array(60).fill(false));
+  for(const m of svg.matchAll(/<rect x="(\d+)" y="(\d+)" width="(\d+)" height="1"/g)){
+   const x=+m[1],y=+m[2],w=+m[3];for(let i=0;i<w;i++)filled[y][x+i]=true;
+  }
+  const slit=[];
+  for(let y=45;y<59;y++){
+   const row=filled[y],first=row.indexOf(true),last=row.lastIndexOf(true);
+   if(first<0)continue;
+   for(let x=Math.max(first+1,24);x<Math.min(last,37);x++)if(!row[x]){slit.push(y);break;}
+  }
+  assert.ok(slit.length>=5,`${view}: the legs are still fused by the white matte (rows ${slit})`);
+ }
+});
 test('dialogue portrait uses the cleaned, versioned SVG rather than the stale icon',()=>{
  const html=fs.readFileSync('index.html','utf8');
- assert.match(html,/class="dialogue-portrait"><img src="\/assets\/character\/girl-front\.svg\?v=6"/);
+ assert.match(html,/class="dialogue-portrait"><img src="\/assets\/character\/girl-front\.svg\?v=7"/);
  assert.doesNotMatch(html,/src="\/assets\/girl\.png"/);
 });

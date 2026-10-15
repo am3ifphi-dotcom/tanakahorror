@@ -30,6 +30,35 @@ for y in range(43):
   if a and hair and inside.getpixel((x,y))==0:
    assert not (min(r,g,b)>105 and max(r,g,b)-min(r,g,b)<32),(x,y,'white edge')
 
+# Front and back: the background must show between the legs. The supplied
+# drawing kept its white studio background there (the slit is enclosed by the
+# hem, a leg on each side and the touching shoes), which read as webbed legs.
+def interior_gaps(im,y):
+ """Transparent runs that have opaque pixels on both sides of the same row."""
+ xs=[x for x in range(im.width) if im.getpixel((x,y))[3]]
+ if not xs:return []
+ runs=[];x=xs[0]
+ while x<xs[-1]:
+  if im.getpixel((x,y))[3]==0:
+   end=x
+   while im.getpixel((end,y))[3]==0:end+=1
+   runs.append((x,end-1));x=end
+  else:x+=1
+ return runs
+for label in ['front','back']+[f'{v}-walk-{f}' for v in ['front','back'] for f in range(4)]:
+ im=Image.open(D/f'girl-{label}.png').convert('RGBA')
+ slit={y:[(a,b) for a,b in interior_gaps(im,y) if 24<=a and b<=36] for y in range(45,59)}
+ rows=[y for y,runs in slit.items() if runs]
+ assert len(rows)>=5,(label,'legs fused: no background between them',rows)
+ assert max(rows)-min(rows)+1==len(rows),(label,'slit between the legs is broken',rows)
+ for y in rows:
+  assert len(slit[y])==1,(label,y,'more than one hole between the legs',slit[y])
+  (a,b),=slit[y]
+  assert b-a+1<=4,(label,y,'slit wider than the gap between the legs',(a,b))
+  for x in (a-1,b+1):
+   r,g,bl,_=im.getpixel((x,y));lum=(r*299+g*587+bl*114)//1000
+   assert not (max(r,g,bl)-min(r,g,bl)<20 and lum>=128),(label,x,y,'white matte left beside the slit')
+
 # Side views come from the supplied girl_left.png / girl_right.png, so they are
 # distinct drawings (not mirrors). What must hold: no whitish/grey background
 # pixel (matte, floor oval, curl windows), no one-pixel wisps, one solid figure.
@@ -61,7 +90,7 @@ check_side(left,'left');check_side(right,'right')
 assert ImageChops.difference(left,right).getbbox() is not None,'left/right must be the two supplied drawings'
 for im,src in [(left,'girl_left.png'),(right,'girl_right.png')]:
  # Every kept pixel comes from the supplied drawing (same place, one row lower).
- source=Image.open(R/src).convert('RGBA')
+ source=Image.open(R/'source'/src).convert('RGBA')
  kept=sum(1 for y in range(1,60) for x in range(60) if im.getpixel((x,y))[3])
  from_source=sum(1 for y in range(1,60) for x in range(60) if im.getpixel((x,y))[3] and source.getpixel((x,y-1))[3])
  assert kept>2000 and from_source>=kept-40,(src,kept,from_source,'side view drifted from the supplied pixels')
