@@ -42,8 +42,28 @@ test('the background shows between the legs instead of the supplied white matte'
   assert.ok(slit.length>=5,`${view}: the legs are still fused by the white matte (rows ${slit})`);
  }
 });
+test('every stored frame is unique: the standing art is walk frame 0, not a copy',()=>{
+ const dir='public/assets/character';
+ const files=fs.readdirSync(dir).filter(f=>f.endsWith('.png'));
+ assert.equal(files.length,16,`expected 4 directions x 4 frames, got ${files}`);
+ const seen=new Map();
+ for(const f of files){
+  const key=fs.readFileSync(`${dir}/${f}`).toString('base64');
+  assert.ok(!seen.has(key),`${f} is a byte-for-byte copy of ${seen.get(key)}`);
+  seen.set(key,f);
+ }
+ for(const view of ['front','left','right','back']){
+  assert.ok(fs.existsSync(`${dir}/girl-${view}.png`),`${view}: the standing drawing is frame 0`);
+  assert.ok(!fs.existsSync(`${dir}/girl-${view}-walk-0.png`),`${view}: frame 0 must not be duplicated`);
+  for(const f of [1,2,3])assert.ok(fs.existsSync(`${dir}/girl-${view}-walk-${f}.png`),`${view}: walk frame ${f} is missing`);
+ }
+ for(const gone of ['girl_idle.png','girl_back.png','girl_left.png','girl_right.png','public/assets/girl.png','public/assets/girl-walk.png'])
+  assert.ok(!fs.existsSync(gone),`${gone} is a duplicate of a frame in public/assets/character`);
+ for(const kept of ['source/girl_idle.png','source/girl_left.png','source/girl_right.png'])
+  assert.ok(fs.existsSync(kept),`${kept}: the supplied artwork must stay`);
+});
 test('dialogue portrait uses the cleaned, versioned SVG rather than the stale icon',()=>{
  const html=fs.readFileSync('index.html','utf8');
- assert.match(html,/class="dialogue-portrait"><img src="\/assets\/character\/girl-front\.svg\?v=7"/);
+ assert.match(html,/class="dialogue-portrait"><img src="\/assets\/character\/girl-front\.svg\?v=8"/);
  assert.doesNotMatch(html,/src="\/assets\/girl\.png"/);
 });

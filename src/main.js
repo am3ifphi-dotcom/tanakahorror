@@ -115,7 +115,7 @@ function openCredits(){
  <p>返事のない家 <span style="color:#738773">／ THE HOUSE THAT ANSWERS</span><br>返事をするたび、家はあなたに近づく。<br>アイコンを出発点にした、短編探索サイコロジカルホラー。</p>
  <div class="credits-block"><h3>LimeZu</h3><p>Modern Interiors Free v2.2 — 室内、床、壁、家具、扉、窓、装飾。<br><strong>無料版は非商用限定。</strong> 使用・編集可、商用利用・編集素材の再販売不可。<br><a href="https://limezu.itch.io/moderninteriors" target="_blank" rel="noopener noreferrer">作者・配布元</a> · <a href="/licenses/limezu-free.txt" target="_blank">同梱ライセンス原文</a></p></div>
  <div class="credits-block"><h3>Kenney</h3><p>RPG Audio — 足音、木の軋み、扉、紙、金属、衣擦れ。CC0 1.0。<br>軋み音を速度・フィルタ調整して環境音に使用しています。<br><a href="https://kenney.nl/assets/rpg-audio" target="_blank" rel="noopener noreferrer">作者・配布元</a> · <a href="/licenses/kenney-audio.txt" target="_blank">CC0 原文</a></p></div>
- <div class="credits-block"><h3>Character & Direction</h3><p>主人公：提供画像 girl_idle.png。原作者・利用許諾範囲は未確認。<br>本作向けに歩行・背面を補完。怪異は同画像の影・変形表現です。<br>シナリオ、部屋の配置、光・霧・埃、UI、ゲームコード：本作オリジナル。<br>録音の言葉は字幕演出で、音声朗読・楽曲BGMはありません。</p></div>
+ <div class="credits-block"><h3>Character & Direction</h3><p>主人公：提供画像 source/girl_idle.png。原作者・利用許諾範囲は未確認。<br>本作向けに歩行・背面を補完。怪異は同画像の影・変形表現です。<br>シナリオ、部屋の配置、光・霧・埃、UI、ゲームコード：本作オリジナル。<br>録音の言葉は字幕演出で、音声朗読・楽曲BGMはありません。</p></div>
  <div class="credits-block"><h3>Typography</h3><p>Noto Serif JP / Google · Cormorant Garamond / Christian Thalmann<br>SIL Open Font License 1.1。フォントはローカル同梱。</p></div>
  <p class="fine-print">本作品は非商用デモです。素材の権利は各作者に帰属します。<br>素材の転用や商用展開には、別途適切な許諾が必要です。<br><a class="credits-link" href="/CREDITS.md" target="_blank">取得元・条件・加工内容の一覧</a></p>
  <h3>見つけた結末 ${Array.isArray(found)?found.length:0} / 3</h3><p class="fine-print">${Object.entries(ENDINGS).map(([k,e])=>`${e.index}　${Array.isArray(found)&&found.includes(k)?e.title:'未発見'}`).join('<br>')}</p>`);

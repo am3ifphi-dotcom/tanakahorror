@@ -15,13 +15,13 @@ for(let i=0;i<6;i++){
 }
 await page.locator('.dialogue-portrait img').evaluate(im=>im.decode());
 const portrait=await page.locator('.dialogue-portrait img').getAttribute('src');
-if(!portrait.includes('girl-front.svg?v=7'))throw new Error('Stale portrait asset');
+if(!portrait.includes('girl-front.svg?v=8'))throw new Error('Stale portrait asset');
 await page.locator('.dialogue-portrait').screenshot({path:'/home/user/dialogue-portrait-fixed.png'});
 for(let i=0;i<15;i++){const d=await page.evaluate(()=>window.__house.snapshot().dialogue);if(!d)break;await page.keyboard.press('e');}
 await page.keyboard.down('d');await page.waitForTimeout(550);await page.keyboard.up('d');
 const right=await page.evaluate(()=>window.__house.snapshot());
 if(right.state.dir!==2)throw new Error('Right direction not applied');
-const imageOk=await page.evaluate(async()=>{const im=new Image();im.src='/assets/character/girl-walk.svg?v=7';await im.decode();return [im.naturalWidth,im.naturalHeight];});
+const imageOk=await page.evaluate(async()=>{const im=new Image();im.src='/assets/character/girl-walk.svg?v=8';await im.decode();return [im.naturalWidth,im.naturalHeight];});
 await page.keyboard.down('a');await page.waitForTimeout(550);await page.keyboard.up('a');
 const left=await page.evaluate(()=>window.__house.snapshot());
 if(left.state.dir!==1)throw new Error('Left direction not applied');

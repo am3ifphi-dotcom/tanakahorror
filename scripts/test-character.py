@@ -45,7 +45,7 @@ def interior_gaps(im,y):
    runs.append((x,end-1));x=end
   else:x+=1
  return runs
-for label in ['front','back']+[f'{v}-walk-{f}' for v in ['front','back'] for f in range(4)]:
+for label in ['front','back']+[f'{v}-walk-{f}' for v in ['front','back'] for f in (1,2,3)]:
  im=Image.open(D/f'girl-{label}.png').convert('RGBA')
  slit={y:[(a,b) for a,b in interior_gaps(im,y) if 24<=a and b<=36] for y in range(45,59)}
  rows=[y for y,runs in slit.items() if runs]
@@ -94,15 +94,31 @@ for im,src in [(left,'girl_left.png'),(right,'girl_right.png')]:
  kept=sum(1 for y in range(1,60) for x in range(60) if im.getpixel((x,y))[3])
  from_source=sum(1 for y in range(1,60) for x in range(60) if im.getpixel((x,y))[3] and source.getpixel((x,y-1))[3])
  assert kept>2000 and from_source>=kept-40,(src,kept,from_source,'side view drifted from the supplied pixels')
-sheet_png=Image.open(R/'public/assets/girl-walk.png').convert('RGBA')
-svg=rasterize_svg(D/'girl-walk.svg')
-assert ImageChops.difference(svg,sheet_png).getbbox() is None
-for row,base in [(1,left),(2,right)]:
- frames=[sheet_png.crop((f*60,row*60,f*60+60,row*60+60)) for f in range(4)]
- assert ImageChops.difference(frames[0],base).getbbox() is None,('frame 0 is the cleaned drawing',row)
+# The sheet the game reads is the only place a frame is stored twice: cell
+# (row,0) must be the standing drawing, cells 1..3 the three walk files. No
+# other copy of any frame exists, so every stored image has to be distinct.
+sheet=rasterize_svg(D/'girl-walk.svg')
+assert sheet.size==(240,240),'the walk sheet must stay 4 directions x 4 frames'
+stored={}
+for row,name in enumerate(['front','left','right','back']):
+ base=Image.open(D/f'girl-{name}.png').convert('RGBA')
+ stored[f'girl-{name}.png']=base
+ frames=[sheet.crop((f*60,row*60,f*60+60,row*60+60)) for f in range(4)]
+ assert ImageChops.difference(frames[0],base).getbbox() is None,(name,'frame 0 must be the standing drawing')
+ assert not (D/f'girl-{name}-walk-0.png').exists(),(name,'frame 0 is the standing file, not a copy')
+ for f in (1,2,3):
+  png=Image.open(D/f'girl-{name}-walk-{f}.png').convert('RGBA');stored[f'girl-{name}-walk-{f}.png']=png
+  assert ImageChops.difference(rasterize_svg(D/f'girl-{name}-walk-{f}.svg'),png).getbbox() is None,(name,f,'SVG/PNG mismatch')
+  assert ImageChops.difference(frames[f],png).getbbox() is None,(name,f,'sheet cell differs from the frame file')
+ assert len({fr.tobytes() for fr in frames})==4,(name,'all four walk frames must differ')
  ground=base.getchannel('A').getbbox()[3]
  for f,frame in enumerate(frames):
-  check_side(frame,f'row{row} frame{f}')
-  assert 0<=ground-frame.getchannel('A').getbbox()[3]<=1,('feet left the ground line',row,f)  # a swinging foot may lift one pixel
- assert len({fr.tobytes() for fr in frames})==4,('walk frames must differ',row)
-print('PASS: SVG/PNG parity, 16-frame atlas parity, binary alpha, no foot-side matte, no white hair edge, side views clean (no matte/oval/wisps), walk frames anchored.')
+  if name in ('left','right'):check_side(frame,f'{name} frame{f}')
+  assert 0<=ground-frame.getchannel('A').getbbox()[3]<=1,('feet left the ground line',name,f)  # a swinging foot may lift one pixel
+seen={}
+for fname,im in stored.items():seen.setdefault(im.tobytes(),[]).append(fname)
+assert all(len(v)==1 for v in seen.values()),('duplicate image files',[v for v in seen.values() if len(v)>1])
+for gone in [R/'girl_idle.png',R/'girl_back.png',R/'girl_left.png',R/'girl_right.png',
+             R/'public/assets/girl.png',R/'public/assets/girl-walk.png']:
+ assert not gone.exists(),(str(gone),'duplicate copy of a frame came back')
+print('PASS: SVG/PNG parity, 16-frame atlas parity, binary alpha, no foot-side matte, no white hair edge, side views clean (no matte/oval/wisps), walk frames anchored, no duplicate frames.')

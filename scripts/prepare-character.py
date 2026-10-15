@@ -385,32 +385,61 @@ def side_frame(source,side,frame):
  im.alpha_composite(body,(0,SIDE_DROP-lift))
  return im
 
+def mirrored_legs(base,top=LEG_ROW):
+ """The opposite contact pose: the leg band reflected around its own centre.
+
+ Seen from the front the two contacts of a walk (left foot forward, right foot
+ forward) are mirror images, so the second one needs no new drawing - and no
+ frame of the cycle repeats. Only the rows below the hem are reflected, so the
+ body, the hair and the hem stay exactly as drawn.
+ """
+ xs=[x for y in range(top,60) for x in range(60) if base.getpixel((x,y))[3]]
+ lo,hi=min(xs),max(xs)
+ out=base.copy()
+ for y in range(top,60):
+  row=[base.getpixel((x,y)) for x in range(60)]
+  for x in range(60):
+   sx=lo+hi-x
+   out.putpixel((x,y),row[sx] if 0<=sx<60 else (0,0,0,0))
+ return out
+
 def front_frame(base,frame):
- if frame==0:return base.copy()
- stride=[0,1,0,-1][frame];im=Image.new('RGBA',(60,60))
- im.alpha_composite(base.crop((0,0,60,45)),(0,abs(stride)))
- im.alpha_composite(base.crop((0,45,19,51)),(0,45))
- im.alpha_composite(base.crop((43,45,60,51)),(43,45))
- im.alpha_composite(base.crop((19,45,30,57)),(19,45+stride))
- im.alpha_composite(base.crop((30,45,43,57)),(30,45-stride))
+ """Contact / pass / opposite contact / pass, as in the side views.
+
+ Frame 0 is the drawing itself and frame 2 its mirrored legs, so the two
+ contacts alternate feet; frames 1 and 3 are the passes between them, with the
+ body dipping one pixel and one leg lifted. The standing leg never moves, so
+ the sprite keeps the same ground line in every frame.
+ """
+ contact=base if frame<2 else mirrored_legs(base)
+ if frame in (0,2):return contact.copy()
+ swing=(30,43) if frame==1 else (19,30);im=Image.new('RGBA',(60,60))
+ im.alpha_composite(contact.crop((0,0,60,45)),(0,1))
+ im.alpha_composite(contact.crop((0,45,19,51)),(0,45))
+ im.alpha_composite(contact.crop((43,45,60,51)),(43,45))
+ for leg in [(19,30),(30,43)]:
+  im.alpha_composite(contact.crop((leg[0],45,leg[1],57)),(leg[0],45-(1 if leg==swing else 0)))
  return im
 sheet=Image.new('RGBA',(240,240))
 for row,(name,base) in enumerate([('front',front),('left',left),('right',right),('back',back)]):
- (DEST/f'girl-{name}.svg').write_text(svg_for(base,f'主人公・{name}',8),encoding='utf8')
+ # Frame 0 of every direction IS the standing drawing, so it is stored once:
+ # girl-<name>.png/.svg are both the portrait and walk frame 0.
+ (DEST/f'girl-{name}.svg').write_text(svg_for(base,f'主人公・{name}（立ち＝歩行コマ0）',8),encoding='utf8')
  base.save(DEST/f'girl-{name}.png')
  for frame in range(4):
   if name in ('left','right'):im=side_frame(left_source if name=='left' else right_source,name,frame)
   else:im=front_frame(base,frame)
   sheet.alpha_composite(im,(frame*60,row*60))
+  if frame==0:
+   assert im.tobytes()==base.tobytes(),(name,'frame 0 must stay identical to the standing drawing')
+   continue
   (DEST/f'girl-{name}-walk-{frame}.svg').write_text(svg_for(im,f'主人公・{name} 歩行 {frame}'),encoding='utf8')
   im.save(DEST/f'girl-{name}-walk-{frame}.png')
 (DEST/'girl-walk.svg').write_text(svg_for(sheet,'主人公・四方向の歩行シート'),encoding='utf8')
-sheet.save(ROOT/'public/assets/girl-walk.png');front.save(ROOT/'public/assets/girl.png')
 (DEST/'source-palette.json').write_text(json.dumps(colors,indent=2))
-# Replace the repository-root standing pictures (which still carry the untrimmed
-# white matte) with the cleaned versions, so the root files are the trimmed art.
-front.save(ROOT/'girl_idle.png')
-left.save(ROOT/'girl_left.png')
-right.save(ROOT/'girl_right.png')
-back.save(ROOT/'girl_back.png')
-print('Generated clean front, supplied-and-cleaned left/right, back SVGs and the 16-frame PNG atlas.')
+# No duplicate copies: every stored image is a distinct frame. The game reads
+# girl-walk.svg (all 16 cells) and girl-front.png (portrait); the supplied
+# artwork stays in source/.
+cells=[sheet.crop((f*60,r*60,f*60+60,r*60+60)).tobytes() for r in range(4) for f in range(4)]
+assert len(set(cells))==16,'the sheet still repeats a frame'
+print('Generated clean front, supplied-and-cleaned left/right, back SVGs and 16 distinct frames.')
