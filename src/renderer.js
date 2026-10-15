@@ -9,7 +9,7 @@ const FACING=[[0,1],[-1,0],[1,0],[0,-1]];
 // lamp out ahead on the supplied drawings' extended arm, the front view
 // carries it one-handed just right of centre, and seen from behind the torch
 // is in front of her body.
-const TORCH_HAND=[[7,-14],[-12,-15],[12,-14],[0,-30]];
+const TORCH_HAND=[[6,-13],[-12,-15],[12,-14],[0,-30]];
 export class Renderer{
  constructor(canvas){
   this.canvas=canvas;this.ctx=canvas.getContext('2d',{alpha:false});this.images={};this.cache={};this.cam={x:512,y:320};this.time=0;this.beam={x:0,y:1};this.resize();

@@ -359,10 +359,12 @@ def raise_torch(im):
  # and the lamp hangs from it seen end-on. Lowered until the on-screen lamp
  # height matches the side views exactly (game offset -15, like the left
  # view's -15 / right view's -14 - the user compared them side by side).
- # Sleeve: dress shade hugging the dress' right edge, clear of the hair lock.
- put([(37,34),(36,35),(37,35),(36,36),(37,36),(36,37),(37,37)],colors['clothShade'])
- # Fist wrapped over the lamp's handle.
- put([(35,38),(36,38),(37,38),(35,39),(36,39),(37,39)],colors['skinLight'])
+ # Sleeve: dress shade hugging the dress' right edge up to the shoulder line,
+ # clear of the hair lock, two pixels wide so it reads at game scale.
+ put([(37,33),(37,34),(36,35),(37,35),(36,36),(37,36),(36,37),(37,37)],colors['clothShade'])
+ # Fist wrapped over the lamp's handle - full skin colour so the hand still
+ # reads against the pale dress once the game's glow washes over it.
+ put([(35,38),(36,38),(37,38),(35,39),(36,39),(37,39)],colors['skin'])
  # Lamp end-on under the fist: a rounded rim around a 2x2 lit lens - the
  # lens in the exact colour of the game's glow dot ('#f5dfad') so the drawn
  # lamp and the light effect merge into one.
