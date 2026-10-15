@@ -213,7 +213,10 @@ export class Renderer{
  }
  drawPlayer(c,x,y,dir,moving,t,light){
   c.fillStyle='#03090bad';c.beginPath();c.ellipse(x,y-2,18,6,0,0,Math.PI*2);c.fill();
-  const frame=moving?Math.floor(t*8)%4:0,bob=moving?0:Math.sin(t*1.65)*.7;
+  // The art itself bobs: the passing/stride frames (1 and 3, every direction)
+  // carry the body one pixel higher, so the torch dot must ride the same
+  // pixel or it detaches from the drawn fist on half of the walk cycle.
+  const frame=moving?Math.floor(t*8)%4:0,bob=moving?(frame%2?-1:0):Math.sin(t*1.65)*.7;
   if(light&&dir===3){
    // Facing away: the torch is in front of her body, so only its spill rims her hair and shoulders.
    c.save();c.globalCompositeOperation='screen';const g=c.createRadialGradient(x,y-30,0,x,y-30,26);g.addColorStop(0,'#ffdc9752');g.addColorStop(1,'#edb86b00');c.fillStyle=g;c.fillRect(x-26,y-56,52,52);c.restore();
